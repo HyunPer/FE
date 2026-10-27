@@ -67,6 +67,8 @@ when (val r = apiCall { c.api.profiles() }) {
 - 204가 올 수 있는 호출(현재 예약 등)은 `Response<T>`라서 `bodyOrNull()`로 꺼냅니다.
 - 이미지 주소(`/files/{id}`)는 `c.imageUrl(path)`로 전체 주소를 만들어 이미지 로더에 넘깁니다.
 - 401을 받으면 `UserSession.me()`가 토큰을 지웁니다 → 가입 화면으로.
+- 차량 관리: `renameVehicle`·`regeneratePairingCode`·`transferOwner`·`removeMember`는 OWNER만(MEMBER는 403), `leaveVehicle`은 누구나(다른 멤버가 있으면 OWNER는 409).
+- 화면이 나오기 전에는 BE의 임시 QA 콘솔(`http://localhost:8090/qa/`)에서 같은 API 흐름을 눌러볼 수 있습니다.
 
 ### 차량 앱
 

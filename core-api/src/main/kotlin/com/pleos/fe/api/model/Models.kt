@@ -16,6 +16,9 @@ data class UserResponse(val id: String, val nickname: String, val createdAt: Str
 @Serializable
 data class SignUpResponse(val user: UserResponse, val accessToken: String)
 
+@Serializable
+data class UpdateUserRequest(val nickname: String)
+
 // ── 프로필 ──
 
 @Serializable
@@ -113,6 +116,15 @@ data class VehicleDetailResponse(
     val myRole: VehicleRole,
     val members: List<VehicleMemberResponse>,
 )
+
+@Serializable
+data class VehicleUpdateRequest(val nickname: String? = null)
+
+@Serializable
+data class PairingCodeResponse(val pairingCode: String)
+
+@Serializable
+data class TransferOwnerRequest(val userId: String)
 
 @Serializable
 enum class ReservationStatus { PENDING, APPLIED, CANCELLED }

@@ -4,6 +4,7 @@ import com.pleos.fe.api.model.AssetResponse
 import com.pleos.fe.api.model.ImportThemeRequest
 import com.pleos.fe.api.model.MyVehicleResponse
 import com.pleos.fe.api.model.PairRequest
+import com.pleos.fe.api.model.PairingCodeResponse
 import com.pleos.fe.api.model.ProfileRequest
 import com.pleos.fe.api.model.ProfileResponse
 import com.pleos.fe.api.model.ReservationResponse
@@ -17,14 +18,18 @@ import com.pleos.fe.api.model.SignUpRequest
 import com.pleos.fe.api.model.SignUpResponse
 import com.pleos.fe.api.model.ThemeRequest
 import com.pleos.fe.api.model.ThemeResponse
+import com.pleos.fe.api.model.TransferOwnerRequest
+import com.pleos.fe.api.model.UpdateUserRequest
 import com.pleos.fe.api.model.UserResponse
 import com.pleos.fe.api.model.VehicleDetailResponse
+import com.pleos.fe.api.model.VehicleUpdateRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
@@ -42,6 +47,9 @@ interface PhoneApi {
 
     @GET("api/v1/users/me")
     suspend fun me(): UserResponse
+
+    @PATCH("api/v1/users/me")
+    suspend fun updateMe(@Body request: UpdateUserRequest): UserResponse
 
     // 프로필
     @GET("api/v1/profiles")
@@ -84,6 +92,26 @@ interface PhoneApi {
     @GET("api/v1/vehicles/{vehicleId}")
     suspend fun vehicle(@Path("vehicleId") vehicleId: String): VehicleDetailResponse
 
+    /** OWNER만(MEMBER는 403). */
+    @PATCH("api/v1/vehicles/{vehicleId}")
+    suspend fun renameVehicle(@Path("vehicleId") vehicleId: String, @Body request: VehicleUpdateRequest): VehicleDetailResponse
+
+    /** OWNER만. 이전 코드는 바로 무효. */
+    @POST("api/v1/vehicles/{vehicleId}/pairing-code")
+    suspend fun regeneratePairingCode(@Path("vehicleId") vehicleId: String): PairingCodeResponse
+
+    /** OWNER만. 나는 MEMBER가 된다. */
+    @POST("api/v1/vehicles/{vehicleId}/owner")
+    suspend fun transferOwner(@Path("vehicleId") vehicleId: String, @Body request: TransferOwnerRequest): VehicleDetailResponse
+
+    /** 다른 멤버가 있으면 OWNER는 먼저 넘겨야 한다(409). 내 대기 예약·이 차 시트 자세가 정리된다. */
+    @DELETE("api/v1/vehicles/{vehicleId}/members/me")
+    suspend fun leaveVehicle(@Path("vehicleId") vehicleId: String): Response<Unit>
+
+    /** OWNER만. */
+    @DELETE("api/v1/vehicles/{vehicleId}/members/{userId}")
+    suspend fun removeMember(@Path("vehicleId") vehicleId: String, @Path("userId") userId: String): Response<Unit>
+
     @PUT("api/v1/vehicles/{vehicleId}/next-driver")
     suspend fun reserve(@Path("vehicleId") vehicleId: String, @Body request: ReserveRequest): ReservationResponse
 
@@ -91,6 +119,7 @@ interface PhoneApi {
     @GET("api/v1/vehicles/{vehicleId}/next-driver")
     suspend fun currentReservation(@Path("vehicleId") vehicleId: String): Response<ReservationResponse>
 
+    /** 예약한 사람이나 OWNER만(다른 MEMBER는 403). */
     @DELETE("api/v1/vehicles/{vehicleId}/next-driver")
     suspend fun cancelReservation(@Path("vehicleId") vehicleId: String): Response<Unit>
 
