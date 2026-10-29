@@ -11,7 +11,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Pleos SDK(ai.pleos.playground:Vehicle)는 Playground 콘솔이 안내하는 저장소를 여기에 추가한다.
+        // Pleos Playground SDK (ai.pleos.playground:*). 공식 문서: Importing Vehicle SDK
+        maven("https://nexus-playground.pleos.ai/repository/maven-releases/") {
+            content { includeGroup("ai.pleos.playground") }
+        }
     }
 }
 

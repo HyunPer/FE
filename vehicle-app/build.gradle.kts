@@ -30,5 +30,5 @@ android {
 
 dependencies {
     implementation(project(":core-android"))
-    // Pleos SDK: implementation("ai.pleos.playground:Vehicle:2.3.2") — 저장소 주소 확인 후 settings.gradle.kts에 추가
+    implementation("ai.pleos.playground:Vehicle:2.3.2")
 }

@@ -2,7 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Pleos Vehicle SDK 권한(시트·공조·조명 제어)은 SDK 연결 때 추가한다: pleos.car.permission.CONTROL_CAR_* -->
+
+    <!--
+      Pleos Vehicle SDK 권한. 공모전·개발 단계에서는 선언만으로 에뮬레이터에서 호출된다(별도 승인 불필요, 10/28 설명회).
+      M마켓 배포 심사에서는 승인된 권한만 선언해야 하므로, 실제 쓰는 것만 둔다.
+    -->
+    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_SEATS" />
+    <!-- 앰비언트 setter 문서 표기가 CAR_LIGHTS/CONTROL_CAR_LIGHTS로 엇갈려 둘 다 선언 -->
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
+    <!-- 기어 상태(P단) 구독 -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
 
     <uses-feature
         android:name="android.hardware.type.automotive"
@@ -12,6 +25,19 @@
         android:name=".VehicleApp"
         android:allowBackup="false"
         android:label="@string/app_name"
-        android:supportsRtl="true" />
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <!-- 화면 디자인 전 QA용 임시 화면. 디자인 화면이 나오면 런처 진입점을 그쪽으로 옮긴다. -->
+        <activity
+            android:name=".VehicleQaActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>

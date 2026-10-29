@@ -4,7 +4,7 @@
 
 기준 문서: [Notion 공모전 페이지](https://app.notion.com/p/Pleos-4044c75bb8a781d4aa5ecb3bfcca8074) · 화면 설계: [와이어프레임](https://claude.ai/artifact/7dDEt1LvopWgWkoAefpA2d)
 
-> 지금은 **서버 연결 준비 단계**입니다. 화면(Activity·Compose)은 아직 없습니다.
+> 지금은 **서버 연결 + Pleos Vehicle SDK 연동 단계**입니다. 디자인 화면은 아직 없고, 차량 앱에는 에뮬레이터 QA용 임시 화면이 있습니다.
 
 ## 모듈
 
@@ -13,7 +13,7 @@
 | `core-api` | 순수 Kotlin (JVM) | 서버 API(Retrofit), 데이터 모델, 토큰 첨부, 오류 처리, 가입·차량 등록 세션, 탑승 2단계 적용 흐름 |
 | `core-android` | Android 라이브러리 | 토큰 보관: Android Keystore(AES-GCM) 암호화 + DataStore |
 | `phone-app` | Android 앱 | `PhoneContainer`: API·세션 연결 |
-| `vehicle-app` | Android Automotive 앱 | `VehicleContainer`: API·차량 세션·2단계 적용 흐름 연결 |
+| `vehicle-app` | Android Automotive 앱 | `VehicleContainer`: API·차량 세션·2단계 적용 흐름, Pleos Vehicle SDK 연동(`sdk/`), QA 임시 화면 |
 
 `core-api`는 안드로이드에 의존하지 않아 PC에서 바로 테스트하고, 실제 서버를 상대로 E2E를 돌릴 수 있습니다.
 
@@ -26,6 +26,7 @@
 | compileSdk / minSdk | 35 / 28 · 폰 targetSdk 35, 차량 targetSdk 34 (Pleos 에뮬레이터 API 34) |
 | Retrofit · OkHttp | 3.0.0 · 5.3.2 (5.4+는 compileSdk 36 이상 필요) |
 | kotlinx.serialization · coroutines | 1.11.0 · 1.11.0 |
+| Pleos Vehicle SDK | `ai.pleos.playground:Vehicle:2.3.2` (저장소 `nexus-playground.pleos.ai`) |
 | Gradle | 9.8.2 (Wrapper 포함) |
 
 ## 빌드와 테스트
@@ -87,8 +88,29 @@ when (val o = c.applyFlow.onBoarding()) {
 
 `VehicleApplyFlow`가 순서를 지킵니다: **차량 설정 적용(VehicleControl) → 서버에 적용 완료 보고 → 웰컴 묶음 렌더(WelcomeRenderer)**. 차량 설정이 실패하면 보고하지 않고 멈춥니다.
 
+## Pleos Vehicle SDK 연동 (vehicle-app/sdk)
+
+| 파일 | 하는 일 |
+| --- | --- |
+| `PleosVehicleControl` | 1단계 차량 설정을 운전석에 적용: 공조 온도·풍량(차량 범위로 자동 조정), 시트 열선·통풍, 핸들 열선, 시트 자세(메모리 슬롯 우선, 없으면 목표 위치까지 폐루프 이동). 항목별 결과를 `report`로 남기고, 하나도 적용하지 못했을 때만 실패로 본다 |
+| `PleosWelcomeRenderer` | 2단계 웰컴: 화면 상태 갱신 → 실내 앰비언트 라이트 켜기·색·밝기. 임의 색이 거부되면 가장 가까운 지원 색(에뮬레이터 팔레트)으로 다시 시도 |
+| `BoardingTrigger` | 운전석 착석 + P단을 감지하면 한 번만 2단계 적용 시작(시동 시 앱 자동 실행은 서드파티에 허용되지 않음) |
+| `SdkCalls` | SDK 콜백을 코루틴으로 감쌈. set은 onComplete가 보장되지 않아, 시간 안에 실패가 없으면 "요청 보냄"으로 처리 |
+
+- SDK 실제 API는 받은 AAR에서 확인했습니다: 진입점 `Vehicle(context).initialize()`, 도메인 `getHVAC()`·`getSeat()`·`getSteeringWheel()`·`getLight()`·`getGear()`.
+- 권한은 매니페스트 선언만으로 에뮬레이터에서 호출됩니다(10/28 설명회). M마켓 배포 때는 승인된 권한만 남깁니다.
+- 시트 목표 위치 이동 로직(`core-api/vehicle/SeatAxisMover`)과 조명 색 매핑(`AmbientColor`)은 PC에서 단위 테스트합니다. FORWARD가 값을 늘리는지 줄이는지 문서에 없어, 멀어지면 한 번 방향을 뒤집고 시간 초과에도 반드시 멈춥니다.
+
+### 에뮬레이터에서 QA하기
+
+1. Playground 문서대로 Pleos Connect 에뮬레이터(API 34)를 띄운다.
+2. BE를 PC에서 실행하고(`http://10.0.2.2:8090`), BE QA 콘솔(`/qa`)에서 "데모 가족 만들기" 또는 페어링·예약을 준비한다.
+3. `./gradlew :vehicle-app:installDebug` 후 앱을 연다. 임시 화면에 페어링 코드가 뜨면 폰 쪽(QA 콘솔)에서 페어링한다.
+4. "탑승 (2단계 적용)"을 누르거나, "착석+P단 자동 감지 켜기" 후 Virtual Console(`adb forward tcp:8088 tcp:8088` → `http://127.0.0.1:8088`)에서 운전석 착석·기어 P를 바꾼다.
+5. 화면 로그에서 항목별 ✓/✗와 Virtual Console의 공조·열선·조명 값 변화를 확인한다.
+
 ## 다음 작업
 
-- **Pleos Vehicle SDK 연결**: `LogOnlyVehicleControl`을 실제 구현으로 교체(`VehicleControl` 주석에 SDK 메서드 매핑). SDK 저장소 주소를 `settings.gradle.kts`에, `pleos.car.permission.CONTROL_CAR_*` 권한을 매니페스트에 추가.
-- **WelcomeRenderer 확장**: 스킨 교체 후 앰비언트 라이트(`setAmbientLightBrightnessColor`) → 사운드·TTS 인사.
+- **에뮬레이터 실측**: 시트 위치 API·selectSeatMemory·앰비언트 임의 색 동작 확인(운영 메일로도 문의 예정).
+- **웰컴 사운드·TTS 인사**: TextToSpeech SDK 연결.
 - **화면**: 와이어프레임 8화면을 동료 디자인에 맞춰 구현. 모든 버튼·위젯은 `ThemeSkinDto`(색 토큰·프리셋)로 그린다.
