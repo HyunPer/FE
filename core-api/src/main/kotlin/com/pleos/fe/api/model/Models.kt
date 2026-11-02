@@ -145,6 +145,20 @@ data class ReservationResponse(
     val appliedAt: String? = null,
 )
 
+@Serializable
+enum class ApplySource { RESERVATION, SELECTED }
+
+/** 탑승 기록 한 줄. 프로필이 지워져도 이름은 기록 당시 그대로 남는다. */
+@Serializable
+data class ApplyLogResponse(
+    val driverUserId: String,
+    val driverNickname: String,
+    val profileId: String,
+    val profileName: String,
+    val source: ApplySource,
+    val appliedAt: String,
+)
+
 // ── 테마·이미지 ──
 
 @Serializable

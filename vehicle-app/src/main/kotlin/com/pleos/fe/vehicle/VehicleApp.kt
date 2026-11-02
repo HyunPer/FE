@@ -14,10 +14,15 @@ import com.pleos.fe.api.flow.WelcomeRenderer
 import com.pleos.fe.api.model.VehicleSettingsDto
 import com.pleos.fe.api.model.WelcomeResponse
 import com.pleos.fe.core.android.SecureTokenStore
+import com.pleos.fe.vehicle.sdk.ApplyItem
 import com.pleos.fe.vehicle.sdk.BoardingTrigger
 import com.pleos.fe.vehicle.sdk.PleosVehicleControl
 import com.pleos.fe.vehicle.sdk.PleosWelcomeRenderer
+import com.pleos.fe.vehicle.sdk.WelcomeVoice
+import com.pleos.fe.vehicle.ui.VehicleController
+import com.pleos.fe.vehicle.voice.GleoActions
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,8 +62,23 @@ class VehicleContainer(context: Context) {
         .getOrNull()
 
     val vehicleControl: VehicleControl = sdk?.let { PleosVehicleControl(it) } ?: LogOnlyVehicleControl()
-    val welcomeRenderer = PleosWelcomeRenderer(sdk, welcome)
+    val voice = WelcomeVoice(context.applicationContext)
+    val welcomeRenderer = PleosWelcomeRenderer(sdk, welcome, voice)
     val applyFlow = VehicleApplyFlow(api, vehicleControl, welcomeRenderer)
+
+    /** 화면 상태는 앱 단위로 둔다(화면 회전·재생성에도 적용 중인 작업이 끊기지 않게). */
+    private val appScope = MainScope()
+    val controller: VehicleController by lazy { VehicleController(this, appScope) }
+
+    /** Gleo 음성 비서 호출(App Schema 승인 후 활성화). */
+    val gleo: GleoActions by lazy { GleoActions(context.applicationContext, this, appScope) }
+
+    /** 마지막 탑승 적용의 항목별 결과(차량 설정 → 조명 → 음성). 홈 화면 하단과 QA 로그에 보여준다. */
+    fun lastApplyItems(): List<ApplyItem> = buildList {
+        (vehicleControl as? PleosVehicleControl)?.report?.value?.let(::addAll)
+        welcomeRenderer.ambientResult.value?.let(::add)
+        welcomeRenderer.voiceResult.value?.let(::add)
+    }
 
     /** 착석 + P단 감지 트리거. SDK가 없으면 null(앱 열림·버튼 트리거만 쓴다). */
     fun boardingTrigger(scope: CoroutineScope, onBoarding: suspend () -> Unit): BoardingTrigger? =

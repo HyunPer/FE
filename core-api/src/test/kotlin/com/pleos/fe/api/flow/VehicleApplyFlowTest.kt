@@ -81,4 +81,15 @@ class VehicleApplyFlowTest {
         assertEquals(BoardingOutcome.Step.VEHICLE_SETTINGS, failed.step)
         assertEquals(1, server.requestCount, "applied 보고를 보내지 않았다")
     }
+
+    @Test
+    fun `진행 단계를 순서대로 알린다`() = runTest {
+        server.enqueue(json(nextDriver))
+        server.enqueue(json(welcome))
+        val steps = mutableListOf<BoardingOutcome.Step>()
+
+        flow().onBoarding { steps += it }
+
+        assertEquals(BoardingOutcome.Step.entries.toList(), steps)
+    }
 }

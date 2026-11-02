@@ -1,5 +1,6 @@
 package com.pleos.fe.api
 
+import com.pleos.fe.api.model.ApplyLogResponse
 import com.pleos.fe.api.model.AssetResponse
 import com.pleos.fe.api.model.ImportThemeRequest
 import com.pleos.fe.api.model.MyVehicleResponse
@@ -34,6 +35,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * 폰 앱 API (`/api/v1`, 사용자 토큰). 경로는 앞에 `/`를 붙이지 않는다(기본 주소 뒤에 이어 붙음).
@@ -122,6 +124,10 @@ interface PhoneApi {
     /** 예약한 사람이나 OWNER만(다른 MEMBER는 403). */
     @DELETE("api/v1/vehicles/{vehicleId}/next-driver")
     suspend fun cancelReservation(@Path("vehicleId") vehicleId: String): Response<Unit>
+
+    /** 최근 탑승 기록(최신순). limit 1–50, 서버 기본 20. 멤버가 아니면 404. */
+    @GET("api/v1/vehicles/{vehicleId}/history")
+    suspend fun applyHistory(@Path("vehicleId") vehicleId: String, @Query("limit") limit: Int = 20): List<ApplyLogResponse>
 
     // 이미지·테마
     /** multipart 필드 이름은 "file". [imagePart]로 만든다. */

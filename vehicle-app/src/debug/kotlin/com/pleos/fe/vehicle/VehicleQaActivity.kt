@@ -19,7 +19,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 화면 디자인이 나오기 전 에뮬레이터 QA용 임시 화면.
+ * 에뮬레이터 QA용 로그 화면(디버그 빌드에만 들어간다).
  * 차량 등록·페어링 코드, 탑승 2단계 적용(버튼 / 착석+P단 자동), 항목별 SDK 적용 결과를 로그로 보여준다.
  * Virtual Console(http://127.0.0.1:8088, adb forward tcp:8088 tcp:8088)에서 착석·기어·공조 값을 바꿔 확인한다.
  */
@@ -85,17 +85,16 @@ class VehicleQaActivity : Activity() {
         line("탑승 처리 시작")
         when (val o = container.applyFlow.onBoarding()) {
             is BoardingOutcome.Welcomed -> {
-                reportVehicleItems()
-                container.welcomeRenderer.ambientResult.value?.let { line("${mark(it.ok)} ${it.name}: ${it.detail}") }
+                reportAllItems()
                 line("웰컴: 테마 \"${o.welcome.skin.name}\" · 위젯 ${o.welcome.widgets.joinToString()}")
-                line("TTS 인사: \"${o.welcome.greeting}\"")
+                line("인사말: \"${o.welcome.greeting}\"")
             }
             is BoardingOutcome.ChooseDriver -> {
                 line("예약 없음 → 1탭 선택 화면 대상: " + o.drivers.joinToString { d -> "${d.nickname}(${d.profiles.joinToString { it.name }})" })
                 o.drivers.flatMap { it.profiles }.firstOrNull()?.let { first ->
                     line("QA: 첫 프로필 \"${first.name}\"로 적용해 봅니다")
                     when (val s = container.applyFlow.applySelected(first)) {
-                        is BoardingOutcome.Welcomed -> { reportVehicleItems(); line("웰컴: \"${s.welcome.greeting}\"") }
+                        is BoardingOutcome.Welcomed -> { reportAllItems(); line("웰컴: \"${s.welcome.greeting}\"") }
                         is BoardingOutcome.Failed -> failed(s)
                         else -> Unit
                     }
@@ -103,6 +102,11 @@ class VehicleQaActivity : Activity() {
             }
             is BoardingOutcome.Failed -> { reportVehicleItems(); failed(o) }
         }
+    }
+
+    /** 차량 설정 → 실내 조명 → 인사말 음성 순의 항목별 결과. */
+    private fun reportAllItems() {
+        container.lastApplyItems().forEach { line("${mark(it.ok)} ${it.name}: ${it.detail}") }
     }
 
     private fun reportVehicleItems() {

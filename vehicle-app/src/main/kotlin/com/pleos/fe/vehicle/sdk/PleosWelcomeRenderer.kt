@@ -15,26 +15,33 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 2단계 웰컴: 화면 스킨(상태로 내보냄) → 실내 앰비언트 라이트(Vehicle SDK Light).
- * 조명 실패는 웰컴 전체를 막지 않는다(차종에 따라 앰비언트가 없을 수 있음). 결과는 ambientResult로 남긴다.
+ * 2단계 웰컴: 화면 스킨(상태로 내보냄) → 실내 앰비언트 라이트(Vehicle SDK Light) → 인사말 음성(TTS).
+ * 조명·음성 실패는 웰컴 전체를 막지 않는다(차종에 따라 앰비언트가 없을 수 있음). 결과는 ambientResult·voiceResult로 남긴다.
  */
 class PleosWelcomeRenderer(
     private val vehicle: Vehicle?,
     private val screen: WelcomeRenderer,
+    private val voice: WelcomeVoice? = null,
 ) : WelcomeRenderer {
 
     private val lastAmbient = MutableStateFlow<ApplyItem?>(null)
     val ambientResult: StateFlow<ApplyItem?> = lastAmbient.asStateFlow()
 
+    private val lastVoice = MutableStateFlow<ApplyItem?>(null)
+    val voiceResult: StateFlow<ApplyItem?> = lastVoice.asStateFlow()
+
     override suspend fun render(welcome: WelcomeResponse) {
         screen.render(welcome)
-        lastAmbient.value = try {
-            ApplyItem("실내 조명", true, applyAmbient(welcome.ambientLight))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            ApplyItem("실내 조명", false, e.message ?: e.javaClass.simpleName)
-        }
+        lastAmbient.value = attempt("실내 조명") { applyAmbient(welcome.ambientLight) }
+        voice?.let { lastVoice.value = attempt("인사말 음성") { it.speak(welcome.greeting) } }
+    }
+
+    private suspend fun attempt(name: String, block: suspend () -> String): ApplyItem = try {
+        ApplyItem(name, true, block())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        ApplyItem(name, false, e.message ?: e.javaClass.simpleName)
     }
 
     private suspend fun applyAmbient(light: AmbientLightDto): String {

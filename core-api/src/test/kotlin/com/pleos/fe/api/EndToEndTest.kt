@@ -4,6 +4,7 @@ import com.pleos.fe.api.flow.BoardingOutcome
 import com.pleos.fe.api.flow.VehicleApplyFlow
 import com.pleos.fe.api.flow.VehicleControl
 import com.pleos.fe.api.flow.WelcomeRenderer
+import com.pleos.fe.api.model.ApplySource
 import com.pleos.fe.api.model.ButtonStyle
 import com.pleos.fe.api.model.ClimateDto
 import com.pleos.fe.api.model.PairRequest
@@ -67,5 +68,7 @@ class EndToEndTest {
         assertEquals("#7C4DFF", welcome.ambientLight.color)
         assertEquals("대학생 자녀님, 밤 드라이브 설정을 적용했어요", welcome.greeting)
         assertEquals(null, phone.currentReservation(vehicle.id).bodyOrNull(), "적용 후 대기 예약 없음")
+        val history = phone.applyHistory(vehicle.id).single()
+        assertEquals("밤 드라이브" to ApplySource.RESERVATION, history.profileName to history.source, "탑승 기록 한 줄")
     }
 }

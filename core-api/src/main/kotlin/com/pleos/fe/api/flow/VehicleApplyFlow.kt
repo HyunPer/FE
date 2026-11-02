@@ -50,7 +50,9 @@ class VehicleApplyFlow(
     private val renderer: WelcomeRenderer,
 ) {
 
-    suspend fun onBoarding(): BoardingOutcome {
+    /** [progress]는 단계가 바뀔 때마다 불린다(적용 중 화면의 진행 표시용). */
+    suspend fun onBoarding(progress: (BoardingOutcome.Step) -> Unit = {}): BoardingOutcome {
+        progress(BoardingOutcome.Step.FETCH)
         val next = when (val result = apiCall { api.nextDriver().bodyOrNull() }) {
             is ApiResult.Failure -> return BoardingOutcome.Failed(BoardingOutcome.Step.FETCH, result.error)
             is ApiResult.Success -> result.value
@@ -61,24 +63,31 @@ class VehicleApplyFlow(
                 is ApiResult.Failure -> BoardingOutcome.Failed(BoardingOutcome.Step.FETCH, drivers.error)
             }
         }
-        return applyThenWelcome(next.vehicleSettings) { api.reportApplied(next.reservationId) }
+        return applyThenWelcome(next.vehicleSettings, progress) { api.reportApplied(next.reservationId) }
     }
 
     /** 1탭 선택 화면에서 고른 프로필. */
-    suspend fun applySelected(profile: ApplicableProfileDto): BoardingOutcome =
-        applyThenWelcome(profile.vehicleSettings) { api.reportSelectedApplied(profile.profileId) }
+    suspend fun applySelected(
+        profile: ApplicableProfileDto,
+        progress: (BoardingOutcome.Step) -> Unit = {},
+    ): BoardingOutcome =
+        applyThenWelcome(profile.vehicleSettings, progress) { api.reportSelectedApplied(profile.profileId) }
 
     private suspend fun applyThenWelcome(
         settings: VehicleSettingsDto,
+        progress: (BoardingOutcome.Step) -> Unit,
         report: suspend () -> WelcomeResponse,
     ): BoardingOutcome {
+        progress(BoardingOutcome.Step.VEHICLE_SETTINGS)
         step(BoardingOutcome.Step.VEHICLE_SETTINGS) { control.apply(settings) }?.let { return it }
 
+        progress(BoardingOutcome.Step.REPORT)
         val welcome = when (val result = apiCall { report() }) {
             is ApiResult.Failure -> return BoardingOutcome.Failed(BoardingOutcome.Step.REPORT, result.error)
             is ApiResult.Success -> result.value
         }
 
+        progress(BoardingOutcome.Step.WELCOME)
         step(BoardingOutcome.Step.WELCOME) { renderer.render(welcome) }?.let { return it }
         return BoardingOutcome.Welcomed(welcome)
     }

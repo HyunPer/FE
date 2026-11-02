@@ -60,6 +60,23 @@ fun <T> ApiResult<T>.getOrThrow(): T = when (this) {
     is ApiResult.Failure -> throw error
 }
 
+/** 성공일 때만 [action]을 실행하고 결과를 그대로 돌려준다(상태 갱신을 이어 붙일 때). */
+inline fun <T> ApiResult<T>.onSuccess(action: (T) -> Unit): ApiResult<T> {
+    if (this is ApiResult.Success) action(value)
+    return this
+}
+
+inline fun <T> ApiResult<T>.onFailure(action: (ApiError) -> Unit): ApiResult<T> {
+    if (this is ApiResult.Failure) action(error)
+    return this
+}
+
+/** 여러 호출을 이어서 할 때: 실패하면 `getOrElse { return it }`으로 바로 빠져나간다. */
+inline fun <T> ApiResult<T>.getOrElse(onFailure: (ApiResult.Failure) -> Nothing): T = when (this) {
+    is ApiResult.Success -> value
+    is ApiResult.Failure -> onFailure(this)
+}
+
 private fun HttpException.toApiError(): ApiError.Http {
     val detail = runCatching {
         response()?.errorBody()?.string()?.let { PleosApi.json.decodeFromString<ProblemDetail>(it).detail }

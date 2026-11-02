@@ -28,14 +28,22 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
 
-        <!-- 화면 디자인 전 QA용 임시 화면. 디자인 화면이 나오면 런처 진입점을 그쪽으로 옮긴다. -->
         <activity
-            android:name=".VehicleQaActivity"
+            android:name=".VehicleActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Gleo Interface: App Schema(docs/gleo/schema.json)의 function 이름과 같은 action. 스키마 승인 전에는 호출되지 않는다. -->
+            <intent-filter>
+                <action android:name="APPLY_NEXT_DRIVER" />
+                <action android:name="APPLY_DRIVER_PROFILE" />
+                <action android:name="SHOW_DRIVER_PROFILES" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

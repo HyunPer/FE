@@ -7,6 +7,19 @@
         android:name=".PhoneApp"
         android:allowBackup="false"
         android:label="@string/app_name"
-        android:supportsRtl="true" />
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <!-- 화면 디자인 전 임시: 서버 연동 확인 화면. 실제 화면이 나오면 런처 진입점을 그쪽으로 옮긴다. -->
+        <activity
+            android:name=".ConnectionCheckActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>

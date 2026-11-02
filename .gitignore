@@ -7,6 +7,13 @@ captures/
 .cxx/
 *.apk
 *.aab
+# 제출용 릴리스 APK만 올린다(공모전 안내: apk/ 폴더 또는 Releases)
+!apk/*_release.apk
+
+# 서명 키
+keystore.properties
+*.jks
+*.keystore
 
 ### IDE ###
 .idea/
