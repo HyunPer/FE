@@ -165,7 +165,8 @@ data class ApplyLogResponse(
 enum class ButtonStyle { ROUNDED, PILL, SQUARE, OUTLINED }
 
 @Serializable
-enum class WidgetStyle { FILLED, OUTLINED, GLASS }
+// METALLIC: 스타일 비교용(FE 미리보기). 테마로 고를 수 있게 하려면 BE WidgetStyle에도 추가해야 한다.
+enum class WidgetStyle { FILLED, OUTLINED, GLASS, METALLIC }
 
 @Serializable
 enum class FontStyle { DEFAULT, ROUNDED, BOLD }

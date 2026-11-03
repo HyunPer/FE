@@ -1,4 +1,4 @@
-package com.pleos.fe.vehicle.ui
+package com.pleos.fe.ui
 
 import android.graphics.BitmapFactory
 import android.util.Log

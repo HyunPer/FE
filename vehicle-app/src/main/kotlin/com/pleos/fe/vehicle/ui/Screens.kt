@@ -25,8 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,10 +50,19 @@ import com.pleos.fe.api.model.VehicleSelfResponse
 import com.pleos.fe.api.model.VehicleSettingsDto
 import com.pleos.fe.api.model.WelcomeResponse
 import com.pleos.fe.api.model.WidgetStyle
+import com.pleos.fe.ui.DefaultSkin
+import com.pleos.fe.ui.DefaultSkinDto
+import com.pleos.fe.ui.LocalSkin
+import com.pleos.fe.ui.RemoteImage
+import com.pleos.fe.ui.SkinBackground
+import com.pleos.fe.ui.SkinButton
+import com.pleos.fe.ui.SkinText
+import com.pleos.fe.ui.SkinWidget
+import com.pleos.fe.ui.toSkin
 import com.pleos.fe.vehicle.sdk.ApplyItem
-import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 /** 차량 앱 화면 진입점. 웰컴·홈은 운전자 테마로, 나머지는 기본 테마로 그린다. */
 @Composable
@@ -201,8 +210,7 @@ fun ChooseDriverScreen(
 }
 
 private fun VehicleSettingsDto.summary(): String = buildList {
-    val t = climate.temperature
-    add(if (t % 1.0 == 0.0) "${t.toInt()}℃" else "$t℃")
+    add(formatTemp(climate.temperature))
     add("풍량 ${climate.fanSpeed}")
     if (seat.heatingLevel > 0) add("열선 ${seat.heatingLevel}")
     if (seat.ventilationLevel > 0) add("통풍 ${seat.ventilationLevel}")
@@ -241,6 +249,7 @@ fun HomeScreen(
     items: List<ApplyItem>,
     onPickDriver: () -> Unit,
     onReset: () -> Unit,
+    status: VehicleStatus = VehicleStatus(),
 ) {
     Column(Modifier.fillMaxSize().padding(40.dp)) {
         Row(verticalAlignment = Alignment.Top) {
@@ -257,7 +266,7 @@ fun HomeScreen(
             }
             welcome.widgets.take(MAX_WIDGETS).chunked(WIDGETS_PER_ROW).forEach { row ->
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    row.forEach { WidgetCard(it, Modifier.weight(1f).fillMaxHeight()) }
+                    row.forEach { WidgetCard(it, status, Modifier.weight(1f).fillMaxHeight()) }
                     repeat(WIDGETS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
@@ -277,15 +286,26 @@ fun HomeScreen(
     }
 }
 
+/** 홈 위젯에 보여줄 차량 상태. Vehicle SDK(EvBattery·HVAC)에서 읽어 채운다. 모르면 null. */
+data class VehicleStatus(
+    val batteryPercent: Int? = null,
+    val rangeKm: Int? = null,
+    val cabinTemperature: Double? = null,
+)
+
+private fun formatTemp(t: Double) = if (t % 1.0 == 0.0) "${t.toInt()}℃" else "$t℃"
+
 /** 위젯 이름은 폰에서 고른 문자열 그대로 온다. 아는 이름만 내용을 채우고 나머지는 이름만 보여준다. */
 @Composable
-private fun WidgetCard(id: String, modifier: Modifier) {
+private fun WidgetCard(id: String, status: VehicleStatus, modifier: Modifier) {
     val (title, body) = when (id) {
         "clock" -> "시계" to rememberClock()
         "music" -> "음악" to "재생 중인 곡이 없어요"
         "weather" -> "날씨" to "날씨 정보를 준비하고 있어요"
-        "battery" -> "배터리" to "배터리 정보를 준비하고 있어요"
-        "climate" -> "공조" to "프로필 온도로 맞췄어요"
+        "battery" -> "배터리" to (
+            status.batteryPercent?.let { pct -> "$pct%" + (status.rangeKm?.let { " · ${it}km" } ?: "") } ?: "배터리 정보를 준비하고 있어요"
+        )
+        "climate" -> "공조" to (status.cabinTemperature?.let { "실내 ${formatTemp(it)}" } ?: "프로필 온도로 맞췄어요")
         else -> id to ""
     }
     SkinWidget(modifier) {

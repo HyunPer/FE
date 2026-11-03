@@ -1,4 +1,4 @@
-package com.pleos.fe.vehicle.ui
+package com.pleos.fe.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,7 +19,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -64,6 +69,8 @@ data class Skin(
         }
 
     val widgetShape: Shape get() = RoundedCornerShape(24.dp)
+
+    val isDark: Boolean get() = background.luminance() < 0.5f
 
     val weight: FontWeight
         get() = when (fontStyle) {
@@ -159,7 +166,15 @@ fun SkinButton(
         modifier = modifier
             .heightIn(min = 76.dp)
             .clip(shape)
-            .background(if (outlined) Color.Transparent else skin.primary)
+            .then(
+                when {
+                    outlined -> Modifier
+                    // 글래스·메탈릭은 주 버튼에도 위→아래 광택을 준다
+                    skin.widgetStyle == WidgetStyle.GLASS || skin.widgetStyle == WidgetStyle.METALLIC ->
+                        Modifier.background(Brush.verticalGradient(listOf(lerp(skin.primary, Color.White, 0.22f), skin.primary)))
+                    else -> Modifier.background(skin.primary)
+                },
+            )
             .border(2.dp, if (!outlined) Color.Transparent else if (primary) skin.primary else skin.text.copy(alpha = 0.5f), shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 36.dp, vertical = 16.dp),
@@ -169,7 +184,12 @@ fun SkinButton(
     }
 }
 
-/** 위젯·카드 틀. FILLED는 surface로 채움, OUTLINED는 테두리만, GLASS는 반투명 surface + 옅은 테두리. */
+/**
+ * 위젯·카드 틀.
+ * - FILLED: surface로 채움 / OUTLINED: 테두리만
+ * - GLASS: 위가 밝은 반투명 막 + 위쪽에 빛이 닿는 테두리(배경 그라데이션·사진이 비쳐 보임)
+ * - METALLIC: 대각선 금속 그라데이션 + 반사광 테두리
+ */
 @Composable
 fun SkinWidget(
     modifier: Modifier = Modifier,
@@ -179,14 +199,38 @@ fun SkinWidget(
     val skin = LocalSkin.current
     val shape = skin.widgetShape
     val styled = when (skin.widgetStyle) {
+        // 밝은 테마에서는 부드러운 그림자로 카드를 띄운다(밝은 미니멀 레퍼런스)
         WidgetStyle.FILLED -> Modifier.background(skin.surface, shape)
         WidgetStyle.OUTLINED -> Modifier.border(2.dp, skin.text.copy(alpha = 0.4f), shape)
         WidgetStyle.GLASS -> Modifier
-            .background(skin.surface.copy(alpha = 0.55f), shape)
-            .border(1.dp, skin.text.copy(alpha = 0.18f), shape)
+            .background(skin.surface.copy(alpha = 0.35f), shape)
+            .background(Brush.verticalGradient(listOf(skin.text.copy(alpha = 0.10f), skin.text.copy(alpha = 0.02f))), shape)
+            .border(1.dp, Brush.verticalGradient(listOf(skin.text.copy(alpha = 0.32f), skin.text.copy(alpha = 0.06f))), shape)
+        WidgetStyle.METALLIC -> Modifier
+            .background(
+                Brush.linearGradient(
+                    0f to lerp(skin.surface, Color.White, 0.16f),
+                    0.45f to skin.surface,
+                    0.7f to lerp(skin.surface, Color.White, 0.07f),
+                    1f to lerp(skin.surface, Color.Black, 0.25f),
+                ),
+                shape,
+            )
+            .border(
+                1.5.dp,
+                Brush.linearGradient(
+                    0f to Color.White.copy(alpha = 0.55f),
+                    0.4f to Color.White.copy(alpha = 0.06f),
+                    0.75f to Color.White.copy(alpha = 0.22f),
+                    1f to Color.White.copy(alpha = 0.04f),
+                ),
+                shape,
+            )
     }
+    val lifted = skin.widgetStyle == WidgetStyle.FILLED && !skin.isDark
     Column(
         modifier = modifier
+            .then(if (lifted) Modifier.shadow(10.dp, shape, ambientColor = Color.Black.copy(alpha = 0.08f), spotColor = Color.Black.copy(alpha = 0.12f)) else Modifier)
             .clip(shape)
             .then(styled)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
@@ -203,6 +247,21 @@ fun SkinBackground(
 ) {
     val skin = LocalSkin.current
     Box(Modifier.fillMaxSize().background(skin.background)) {
+        // 사진이 없을 때도 단색 대신 은은한 깊이: 위는 조금 밝게, 오른쪽 위에 강조색 빛 번짐
+        val top = if (skin.isDark) lerp(skin.background, skin.text, 0.07f) else lerp(skin.background, Color.White, 0.6f)
+        val bottom = if (skin.isDark) lerp(skin.background, Color.Black, 0.2f) else lerp(skin.background, Color.Black, 0.04f)
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(top, skin.background, bottom))))
+        if (skin.isDark) {
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.radialGradient(
+                        listOf(skin.primary.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(Float.POSITIVE_INFINITY, 0f),
+                        radius = 1100f,
+                    ),
+                ),
+            )
+        }
         skin.backgroundImageUrl?.let { url ->
             RemoteImage(url, Modifier.matchParentSize(), ContentScale.Crop)
             // 사진 위에서도 테마 글자색 대비가 유지되게 배경색을 옅게 덮는다
