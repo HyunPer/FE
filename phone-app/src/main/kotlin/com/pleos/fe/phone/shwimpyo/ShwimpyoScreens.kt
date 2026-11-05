@@ -1,5 +1,6 @@
 package com.pleos.fe.phone.shwimpyo
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -33,13 +35,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pleos.fe.api.model.Mood
 import com.pleos.fe.api.model.MotionSensitivity
 import com.pleos.fe.api.model.RestStyle
 import com.pleos.fe.api.model.RiderConditionDto
+import com.pleos.fe.api.care.WeeklyInsights
 import com.pleos.fe.api.model.TripResponse
+import com.pleos.fe.api.model.VehicleDetailResponse
+import com.pleos.fe.api.model.VehicleRole
+import com.pleos.fe.phone.ui.Avatar
 import com.pleos.fe.phone.ui.BottomNav
+import com.pleos.fe.phone.ui.FamilyColors
 import com.pleos.fe.phone.ui.LocalPalette
 import com.pleos.fe.phone.ui.PCard
 import com.pleos.fe.phone.ui.PChip
@@ -72,6 +80,7 @@ fun ShwimpyoApp(viewModel: ShwimpyoViewModel) {
                     when (tab) {
                         PhoneTab.HOME -> HomeScreen(state, viewModel::checkIn, viewModel::refresh)
                         PhoneTab.HISTORY -> HistoryScreen(state.trips)
+                        PhoneTab.FAMILY -> FamilyScreen(state.family, state.isOwner, state.busy, viewModel::regeneratePairingCode)
                         PhoneTab.CONDITION -> ConditionScreen(state.condition, state.busy, viewModel::saveCondition)
                     }
                 }
@@ -204,17 +213,21 @@ private fun CheckInCard(trip: TripResponse, busy: Boolean, onCheckIn: (String, M
 
 /** 기록: 이번 주 요약 + 최근 이동과 그때의 기분. */
 @Composable
-fun HistoryScreen(trips: List<TripResponse>) {
+fun HistoryScreen(trips: List<TripResponse>, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()) {
     val ended = trips.filter { it.endedAt != null }
+    val week = remember(trips, now) { WeeklyInsights.of(trips, now, zone) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
         PText("기록", 22.sp, weight = FontWeight.SemiBold)
         Spacer(Modifier.height(16.dp))
         PCard(Modifier.fillMaxWidth()) {
-            PText("최근 ${ended.size}번 이동", 13.sp, sub = true)
+            PText("이번 주 ${week.tripCount}번 이동", 13.sp, sub = true)
             Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Fact("평균 이동", "${ended.averageOf { it.drivingMinutes }}", "분", Modifier.weight(1f))
-                Fact("평균 막힘", "${ended.averageOf { it.congestionMinutes }}", "분", Modifier.weight(1f))
-                Fact("피곤·답답", "${ended.count { it.myMood == Mood.TIRED || it.myMood == Mood.STRESSED }}", "번", Modifier.weight(1f))
+                Fact("평균 이동", "${week.averageMinutes}", "분", Modifier.weight(1f))
+                Fact("막힘 합계", "${week.congestionMinutes}", "분", Modifier.weight(1f))
+                Fact("힘들었던 이동", "${week.hardTrips}", "번", Modifier.weight(1f))
+            }
+            week.pattern?.let {
+                PText(it, 14.sp, Modifier.padding(top = 14.dp), weight = FontWeight.Medium, color = LocalPalette.current.accent, maxLines = 2)
             }
         }
         SectionTitle("최근 이동")
@@ -232,6 +245,51 @@ fun HistoryScreen(trips: List<TripResponse>) {
                         trip.myNote?.let { PText("“$it”", 13.sp, Modifier.padding(top = 4.dp), maxLines = 2) }
                     }
                     PChip(trip.myMood?.label ?: "미기록", trip.myMood != null)
+                }
+            }
+        }
+    }
+}
+
+/** 가족: 초대용 연결 코드(공유·OWNER 재발급)와 멤버 목록. */
+@Composable
+fun FamilyScreen(family: VehicleDetailResponse?, isOwner: Boolean, busy: Boolean, onRegenerate: () -> Unit) {
+    val context = LocalContext.current
+    val p = LocalPalette.current
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+        PText("가족", 22.sp, weight = FontWeight.SemiBold)
+        PText(family?.nickname ?: family?.model ?: "", 13.sp, Modifier.padding(top = 2.dp), sub = true)
+        if (family == null) {
+            PText("가족 정보를 불러오지 못했어요", 15.sp, Modifier.padding(top = 16.dp), sub = true)
+            return@Column
+        }
+        PCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            PText("가족 초대 코드", 13.sp, sub = true)
+            Row(Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                family.pairingCode.forEach { c ->
+                    Box(Modifier.size(42.dp, 52.dp).clip(RoundedCornerShape(12.dp)).background(p.background), contentAlignment = Alignment.Center) {
+                        PText(c.toString(), 26.sp, weight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            PText("가족이 쉼표 폰 앱에서 이 코드를 입력하면 이 차와 연결돼요. 차 화면에도 같은 코드가 떠요.", 13.sp, sub = true, maxLines = 3)
+            Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PillButton("공유하기", onClick = {
+                    val text = "쉼표 앱에서 이 코드를 입력하면 우리 차와 연결돼요: ${family.pairingCode}"
+                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                    context.startActivity(Intent.createChooser(send, "가족 초대 코드 공유"))
+                })
+                if (isOwner) PillButton("새 코드 받기", filled = false, onClick = { if (!busy) onRegenerate() })
+            }
+            if (isOwner) PText("새 코드를 받으면 이전 코드는 바로 쓸 수 없어요", 12.sp, Modifier.padding(top = 8.dp), sub = true)
+        }
+        SectionTitle("함께 타는 가족 ${family.members.size}명")
+        PCard(Modifier.fillMaxWidth(), padding = 8.dp) {
+            family.members.forEachIndexed { i, m ->
+                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(m.nickname, FamilyColors[i % FamilyColors.size], 40.dp)
+                    PText(m.nickname, 16.sp, Modifier.weight(1f).padding(start = 12.dp), weight = FontWeight.Medium)
+                    PChip(if (m.role == VehicleRole.OWNER) "차 주인" else "가족", m.role == VehicleRole.OWNER)
                 }
             }
         }
@@ -297,8 +355,6 @@ val RestStyle.label: String
         RestStyle.MUSIC -> "음악"
         RestStyle.FRESH_AIR -> "바깥 바람"
     }
-
-private fun List<TripResponse>.averageOf(value: (TripResponse) -> Int): Int = if (isEmpty()) 0 else sumOf(value) / size
 
 private val DisplayTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm")
 

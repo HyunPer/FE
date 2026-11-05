@@ -3,6 +3,7 @@ package com.pleos.fe.vehicle.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,37 +62,65 @@ fun VehicleRoot(controller: VehicleController) {
 @Composable
 fun WaitingScreen(self: VehicleSelfResponse, onStartTrip: () -> Unit) {
     val paired = self.memberCount > 0
-    Row(Modifier.fillMaxSize().padding(56.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                if (paired) "쉼표가 함께 탈 준비가 됐어요" else "이 차를 가족과 연결하세요",
-                color = TextColor,
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                if (paired) "가족 ${self.memberCount}명 연결됨" else "폰 앱 → 차량 연결에서 오른쪽 코드를 입력하세요",
-                color = SubText,
-                fontSize = 24.sp,
-            )
-            if (paired) {
-                // 탑승은 착석+P단으로 자동 감지한다. 에뮬레이터 시연용으로 버튼도 둔다.
-                Spacer(Modifier.height(36.dp))
-                Button({ onStartTrip() }, Modifier.height(76.dp)) { Text("지금 출발", fontSize = 24.sp) }
+    Adaptive { portrait ->
+        if (portrait) {
+            Column(Modifier.fillMaxSize().padding(48.dp), verticalArrangement = Arrangement.Center) {
+                WaitingText(self, onStartTrip)
+                Spacer(Modifier.height(48.dp))
+                PairingCode(self.pairingCode, large = !paired)
+            }
+        } else {
+            Row(Modifier.fillMaxSize().padding(56.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { WaitingText(self, onStartTrip) }
+                Spacer(Modifier.width(48.dp))
+                PairingCode(self.pairingCode, large = !paired)
             }
         }
-        Spacer(Modifier.width(48.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(if (paired) 8.dp else 14.dp)) {
-            self.pairingCode.forEach { c ->
-                Box(
-                    Modifier
-                        .size(if (paired) 52.dp else 88.dp, if (paired) 64.dp else 110.dp)
-                        .background(Surface, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(c.toString(), color = Accent, fontSize = if (paired) 30.sp else 52.sp, fontWeight = FontWeight.Bold)
-                }
+    }
+}
+
+/** 화면이 세로로 긴지(폼 팩터 12.9″ 세로 등) 알려준다. 가로면 좌우로, 세로면 위아래로 놓는 화면이 쓴다. */
+@Composable
+fun Adaptive(content: @Composable (portrait: Boolean) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize()) { content(maxHeight > maxWidth) }
+}
+
+@Composable
+private fun WaitingText(self: VehicleSelfResponse, onStartTrip: () -> Unit) {
+    val paired = self.memberCount > 0
+    Column {
+        Text(
+            if (paired) "쉼표가 함께 탈 준비가 됐어요" else "이 차를 가족과 연결하세요",
+            color = TextColor,
+            fontSize = 44.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            if (paired) "가족 ${self.memberCount}명 연결됨" else "쉼표 폰 앱 → 차량 연결에서 이 연결 코드를 입력하세요",
+            color = SubText,
+            fontSize = 24.sp,
+        )
+        if (paired) {
+            // 탑승은 착석+P단으로 자동 감지한다. 에뮬레이터 시연용으로 버튼도 둔다.
+            Spacer(Modifier.height(36.dp))
+            Button({ onStartTrip() }, Modifier.height(76.dp)) { Text("지금 출발", fontSize = 24.sp) }
+        }
+    }
+}
+
+/** 연결 코드 6자리. 멤버가 없을 때(정차 중 연결 화면)는 크게. */
+@Composable
+private fun PairingCode(code: String, large: Boolean) {
+    Row(horizontalArrangement = Arrangement.spacedBy(if (large) 14.dp else 8.dp)) {
+        code.forEach { c ->
+            Box(
+                Modifier
+                    .size(if (large) 88.dp else 52.dp, if (large) 110.dp else 64.dp)
+                    .background(Surface, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(c.toString(), color = Accent, fontSize = if (large) 52.sp else 30.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

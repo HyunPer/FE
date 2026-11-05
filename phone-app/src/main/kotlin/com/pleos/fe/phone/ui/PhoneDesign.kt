@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
@@ -215,11 +216,12 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     PText(text, 15.sp, modifier.padding(top = 24.dp, bottom = 12.dp), weight = FontWeight.SemiBold)
 }
 
-/** 쉼표 폰 앱 탭: 홈(마지막 이동·체크인) / 기록(트립·기분) / 내 컨디션. */
+/** 쉼표 폰 앱 탭: 홈(마지막 이동·체크인) / 기록(트립·기분) / 가족(초대·멤버) / 내 컨디션. */
 enum class PhoneTab(val label: String, val icon: ImageVector) {
     HOME("홈", Icons.Outlined.Home),
     HISTORY("기록", Icons.Outlined.DateRange),
-    CONDITION("내 컨디션", Icons.Outlined.Person),
+    FAMILY("가족", Icons.Outlined.Person),
+    CONDITION("내 컨디션", Icons.Outlined.FavoriteBorder),
 }
 
 @Composable

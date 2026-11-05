@@ -13,6 +13,8 @@ import com.pleos.fe.api.model.PairRequest
 import com.pleos.fe.api.model.RiderConditionDto
 import com.pleos.fe.api.model.TripResponse
 import com.pleos.fe.api.model.UserResponse
+import com.pleos.fe.api.model.VehicleDetailResponse
+import com.pleos.fe.api.model.VehicleRole
 import com.pleos.fe.api.onSuccess
 import com.pleos.fe.phone.PhoneContainer
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +31,8 @@ data class ShwimpyoState(
     val phase: Phase = Phase.LOADING,
     val me: UserResponse? = null,
     val vehicle: MyVehicleResponse? = null,
+    /** 가족 멤버와 초대용 연결 코드. */
+    val family: VehicleDetailResponse? = null,
     val trips: List<TripResponse> = emptyList(),
     val condition: RiderConditionDto = RiderConditionDto(),
     val busy: Boolean = false,
@@ -36,6 +40,8 @@ data class ShwimpyoState(
 ) {
     /** 끝났는데 내가 아직 체크인하지 않은 가장 최근 트립. 홈에서 "오늘 이동 어땠나요?"로 묻는다. */
     val pendingCheckIn: TripResponse? get() = trips.firstOrNull { it.endedAt != null && it.myMood == null }
+
+    val isOwner: Boolean get() = family?.myRole == VehicleRole.OWNER
 }
 
 /**
@@ -95,6 +101,13 @@ class ShwimpyoViewModel(private val container: PhoneContainer) : ViewModel() {
             .getOrElse { return@launchBusy fail(it) }
     }
 
+    /** 연결 코드 새로 받기(OWNER만). 이전 코드는 바로 막힌다. */
+    fun regeneratePairingCode() = launchBusy {
+        val vehicleId = current.value.vehicle?.id ?: return@launchBusy
+        val code = apiCall { container.api.regeneratePairingCode(vehicleId) }.getOrElse { return@launchBusy fail(it) }
+        current.update { s -> s.copy(family = s.family?.copy(pairingCode = code.pairingCode), message = "새 코드를 받았어요. 이전 코드는 이제 쓸 수 없어요") }
+    }
+
     fun dismissMessage() = current.update { it.copy(message = null) }
 
     private suspend fun showFirstVehicle() {
@@ -110,7 +123,8 @@ class ShwimpyoViewModel(private val container: PhoneContainer) : ViewModel() {
     private suspend fun loadVehicle(vehicle: MyVehicleResponse) {
         val trips = apiCall { container.api.trips(vehicle.id) }.getOrElse { return fail(it) }
         val condition = apiCall { container.api.myCondition() }.getOrElse { return fail(it) }
-        current.update { it.copy(phase = Phase.READY, vehicle = vehicle, trips = trips, condition = condition) }
+        val family = apiCall { container.api.vehicle(vehicle.id) }.getOrElse { return fail(it) }
+        current.update { it.copy(phase = Phase.READY, vehicle = vehicle, trips = trips, condition = condition, family = family) }
     }
 
     private fun fail(failure: ApiResult.Failure) = current.update { it.copy(message = failure.error.message) }

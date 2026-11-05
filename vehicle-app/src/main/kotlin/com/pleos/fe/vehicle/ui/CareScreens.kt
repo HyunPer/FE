@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -86,49 +88,74 @@ fun CareScreen(
     parked: Boolean = true,
     onDemo: ((DemoSignal) -> Unit)? = null,
 ) {
-    Row(Modifier.fillMaxSize().padding(48.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(20.dp).clip(CircleShape).background(risk.level.color))
-                Spacer(Modifier.width(14.dp))
-                Text("동승자 컨디션", color = Secondary, fontSize = 22.sp)
+    Adaptive { portrait ->
+        if (portrait) {
+            Column(Modifier.fillMaxSize().padding(48.dp), verticalArrangement = Arrangement.spacedBy(32.dp)) {
+                CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo)
+                ReasonsCard(risk, parked, onArrive, Modifier.fillMaxWidth().weight(1f))
             }
-            Spacer(Modifier.height(16.dp))
-            Text(risk.level.headline, color = Primary, fontSize = 52.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            Text(tipFor(risk.level, restStyle), color = Primary.copy(alpha = 0.85f), fontSize = 26.sp)
-            // 위험이 높을 때만 경로상 다음 휴게소를 권한다(내비 경로 안내 중일 때)
-            if (risk.level == RiskLevel.HIGH && restAreaAheadM != null) {
-                Text(
-                    "다음 휴게소 ${formatKm(restAreaAheadM)} · 쉬어 가도 좋아요",
-                    color = risk.level.color,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
+        } else {
+            Row(Modifier.fillMaxSize().padding(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo) }
+                Spacer(Modifier.width(40.dp))
+                ReasonsCard(risk, parked, onArrive, Modifier.width(360.dp).fillMaxHeight())
             }
-            Spacer(Modifier.height(28.dp))
-            RiskBar(risk)
-            // 시연 패널도 정차 중에만(디버그 빌드)
-            if (parked) onDemo?.let { DemoPanel(it) }
         }
-        Spacer(Modifier.width(40.dp))
-        Column(
-            Modifier.width(360.dp).fillMaxHeight().background(CardColor, RoundedCornerShape(24.dp)).padding(28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("왜 그런가요", color = Secondary, fontSize = 20.sp)
-            if (risk.reasons.isEmpty()) Text("흔들릴 만한 구간이 없어요", color = Primary, fontSize = 24.sp)
-            risk.reasons.forEach { Text("· $it", color = Primary, fontSize = 24.sp) }
-            Spacer(Modifier.weight(1f))
-            // 운전 중 화면 조작을 줄이려고, 버튼은 P단(정차)일 때만 보여준다. 주행 중 도착은 내비가 알려준다.
-            if (parked) {
-                OutlinedButton(onArrive, Modifier.fillMaxWidth().height(76.dp)) {
-                    Text("도착했어요", color = Primary, fontSize = 22.sp)
-                }
-            } else {
-                Text("도착하면 자동으로 요약해요", color = Secondary, fontSize = 20.sp)
+    }
+}
+
+@Composable
+private fun CareSummary(
+    risk: MotionRisk,
+    restStyle: RestStyle,
+    restAreaAheadM: Double?,
+    parked: Boolean,
+    onDemo: ((DemoSignal) -> Unit)?,
+) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(20.dp).clip(CircleShape).background(risk.level.color))
+            Spacer(Modifier.width(14.dp))
+            Text("동승자 컨디션", color = Secondary, fontSize = 22.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(risk.level.headline, color = Primary, fontSize = 52.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+        Text(tipFor(risk.level, restStyle), color = Primary.copy(alpha = 0.85f), fontSize = 26.sp)
+        // 위험이 높을 때만 경로상 다음 휴게소를 권한다(내비 경로 안내 중일 때)
+        if (risk.level == RiskLevel.HIGH && restAreaAheadM != null) {
+            Text(
+                "다음 휴게소 ${formatKm(restAreaAheadM)} · 쉬어 가도 좋아요",
+                color = risk.level.color,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        }
+        Spacer(Modifier.height(28.dp))
+        RiskBar(risk)
+        // 시연 패널도 정차 중에만(디버그 빌드)
+        if (parked) onDemo?.let { DemoPanel(it) }
+    }
+}
+
+@Composable
+private fun ReasonsCard(risk: MotionRisk, parked: Boolean, onArrive: () -> Unit, modifier: Modifier) {
+    Column(
+        modifier.background(CardColor, RoundedCornerShape(24.dp)).padding(28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("왜 그런가요", color = Secondary, fontSize = 20.sp)
+        if (risk.reasons.isEmpty()) Text("흔들릴 만한 구간이 없어요", color = Primary, fontSize = 24.sp)
+        risk.reasons.forEach { Text("· $it", color = Primary, fontSize = 24.sp) }
+        Spacer(Modifier.weight(1f))
+        // 운전 중 화면 조작을 줄이려고, 버튼은 P단(정차)일 때만 보여준다. 주행 중 도착은 내비가 알려준다.
+        if (parked) {
+            OutlinedButton(onArrive, Modifier.fillMaxWidth().height(76.dp)) {
+                Text("도착했어요", color = Primary, fontSize = 22.sp)
             }
+        } else {
+            Text("도착하면 자동으로 요약해요", color = Secondary, fontSize = 20.sp)
         }
     }
 }
@@ -145,9 +172,15 @@ private fun RiskBar(risk: MotionRisk) {
 }
 
 /** 디버그 빌드에서만 보이는 시연 패널. 에뮬레이터에서 바꿀 수 없는 도로 신호를 흉내 낸다. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DemoPanel(onDemo: (DemoSignal) -> Unit) {
-    Row(Modifier.padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(
+        Modifier.padding(top = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         Text("시연", color = Secondary, fontSize = 16.sp)
         DemoSignal.entries.forEach { signal ->
             OutlinedButton({ onDemo(signal) }, Modifier.height(52.dp)) { Text(signal.label, color = Secondary, fontSize = 16.sp) }
@@ -209,18 +242,38 @@ fun BreathingScreen(onFinish: () -> Unit) {
         }
         onFinish()
     }
-    Row(Modifier.fillMaxSize().padding(56.dp), verticalAlignment = Alignment.CenterVertically) {
+    val circle: @Composable () -> Unit = {
         Box(Modifier.size(320.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.size(320.dp).scale(scale.value).clip(CircleShape).background(Accent.copy(alpha = 0.35f)))
             Box(Modifier.size(120.dp).clip(CircleShape).background(Accent.copy(alpha = 0.8f)))
         }
-        Spacer(Modifier.width(56.dp))
-        Column(Modifier.weight(1f)) {
+    }
+    val guide: @Composable () -> Unit = {
+        Column {
             Text(if (inhale) "천천히 들이쉬고" else "길게 내쉬고", color = Primary, fontSize = 52.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text("$round / $BREATH_ROUNDS", color = Secondary, fontSize = 24.sp)
             Spacer(Modifier.height(36.dp))
             OutlinedButton(onFinish, Modifier.height(76.dp)) { Text("그만하기", color = Primary, fontSize = 22.sp) }
+        }
+    }
+    Adaptive { portrait ->
+        if (portrait) {
+            Column(
+                Modifier.fillMaxSize().padding(56.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                circle()
+                Spacer(Modifier.height(48.dp))
+                guide()
+            }
+        } else {
+            Row(Modifier.fillMaxSize().padding(56.dp), verticalAlignment = Alignment.CenterVertically) {
+                circle()
+                Spacer(Modifier.width(56.dp))
+                guide()
+            }
         }
     }
 }

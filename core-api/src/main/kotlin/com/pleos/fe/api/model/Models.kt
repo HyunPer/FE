@@ -46,6 +46,8 @@ data class VehicleDetailResponse(
     val nickname: String? = null,
     val myRole: VehicleRole,
     val members: List<VehicleMemberResponse>,
+    /** 가족 초대용 현재 연결 코드(멤버에게만 보임). OWNER가 재발급하면 바뀐다. */
+    val pairingCode: String = "",
 )
 
 @Serializable
