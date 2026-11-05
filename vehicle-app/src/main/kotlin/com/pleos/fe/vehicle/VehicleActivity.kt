@@ -1,6 +1,5 @@
 package com.pleos.fe.vehicle
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,17 +13,10 @@ class VehicleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         container.controller.start()
-        setContent { VehicleRoot(container.controller, container::imageUrl) }
-        if (savedInstanceState == null) container.gleo.handle(intent)
+        setContent { VehicleRoot(container.controller) }
     }
 
-    // singleTask라 앱이 떠 있을 때의 Gleo 호출은 여기로 온다.
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        container.gleo.handle(intent)
-    }
-
-    // 착석+P단 감지는 앱이 앞에 있을 때만(시동 시 자동 실행은 서드파티에 허용되지 않음).
+    // 착석+P단 감지는 앱이 앞에 있을 때만.
     override fun onStart() {
         super.onStart()
         container.controller.onForeground()

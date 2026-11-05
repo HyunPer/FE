@@ -47,14 +47,14 @@ class PleosApiTest {
     fun `서버 ProblemDetail의 한국어 설명을 ApiError로 전달한다`() = runTest {
         server.enqueue(
             MockResponse.Builder().code(400).addHeader("Content-Type", "application/problem+json")
-                .body("""{"status":400,"title":"Bad Request","detail":"글자색과 배경색 대비가 부족합니다"}""").build(),
+                .body("""{"status":400,"title":"Bad Request","detail":"페어링 코드는 영문 대문자·숫자 6자리입니다"}""").build(),
         )
 
-        val result = apiCall { phone().themes() }
+        val result = apiCall { phone().vehicles() }
 
         val error = assertIs<ApiError.Http>((result as ApiResult.Failure).error)
         assertEquals(400, error.status)
-        assertEquals("글자색과 배경색 대비가 부족합니다", error.detail)
+        assertEquals("페어링 코드는 영문 대문자·숫자 6자리입니다", error.detail)
     }
 
     @Test
@@ -68,9 +68,9 @@ class PleosApiTest {
     }
 
     @Test
-    fun `204는 null로, 연결 실패는 Network 오류로`() = runTest {
+    fun `204는 성공으로, 연결 실패는 Network 오류로`() = runTest {
         server.enqueue(MockResponse.Builder().code(204).build())
-        assertNull(apiCall { vehicle().nextDriver().bodyOrNull() }.getOrThrow())
+        assertIs<ApiResult.Success<Unit>>(apiCall { phone().leaveVehicle("v1").requireSuccess() })
 
         server.close()
         val result = apiCall { vehicle().me() }
@@ -92,9 +92,4 @@ class PleosApiTest {
         assertEquals("/vehicle-api/v1/me", server.takeRequest().url.encodedPath, "두 번째는 등록 없이 바로 조회")
     }
 
-    @Test
-    fun `이미지 주소를 기본 주소와 합친다`() {
-        assertEquals("http://10.0.2.2:8090/files/abc", assetUrl("http://10.0.2.2:8090/", "/files/abc"))
-        assertEquals("http://10.0.2.2:8090/files/abc", assetUrl("http://10.0.2.2:8090", "files/abc"))
-    }
 }

@@ -1,5 +1,7 @@
 import java.util.Properties
 
+// Kotlin은 AGP 9의 내장 Kotlin으로 컴파일한다(kotlin-android 플러그인을 따로 붙이지 않는다).
+// Android Studio가 "Kotlin 구성"을 권해도 누르지 말 것: kotlin("jvm")을 넣어 안드로이드 모듈이 깨진다.
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -68,12 +70,24 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // 화면 캡처 테스트(Robolectric): 에뮬레이터 없이 PC에서 Compose 화면을 PNG로 그린다.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+// ./gradlew :vehicle-app:testDebugUnitTest → vehicle-app/build/screens/*.png
+tasks.withType<Test>().configureEach {
+    systemProperty("roborazzi.test.record", "true")
 }
 
 dependencies {
     implementation(project(":core-android"))
+    implementation(project(":core-ui"))
+    // 쉼표는 차량 상태 조회 + 내비 연동만 쓴다
     implementation("ai.pleos.playground:Vehicle:2.3.2")
-    implementation("ai.pleos.playground:TextToSpeech:3.3.1")
+    implementation("ai.pleos.playground:NaviHelper:3.0.5")
 
     // compileSdk 35에서 쓸 수 있는 마지막 줄(Compose 1.8.x). 1.9+는 compileSdk 36 필요.
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
@@ -83,6 +97,14 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.ui:ui-tooling-preview")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 /** ./gradlew :vehicle-app:exportReleaseApk → 저장소 루트 apk/ 에 제출 이름으로 복사. */

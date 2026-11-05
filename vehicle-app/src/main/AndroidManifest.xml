@@ -4,17 +4,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      Pleos Vehicle SDK 권한. 공모전·개발 단계에서는 선언만으로 에뮬레이터에서 호출된다(별도 승인 불필요, 10/28 설명회).
-      M마켓 배포 심사에서는 승인된 권한만 선언해야 하므로, 실제 쓰는 것만 둔다.
+      Pleos Vehicle SDK 권한(조회만). 공모전·개발 단계에서는 선언만으로 에뮬레이터에서 호출된다(10/28 설명회).
+      쉼표는 차량 상태 조회 + NaviHelper만 쓴다. 조회 항목이 늘면 해당 CAR_* 권한을 여기에 더한다.
     -->
-    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
-    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <!-- 좌석 점유(탑승 감지) -->
     <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
-    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_SEATS" />
-    <!-- 앰비언트 setter 문서 표기가 CAR_LIGHTS/CONTROL_CAR_LIGHTS로 엇갈려 둘 다 선언 -->
-    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
-    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
-    <!-- 기어 상태(P단) 구독 -->
+    <!-- 기어 상태(P단) -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
 
     <uses-feature
@@ -32,18 +27,10 @@
             android:name=".VehicleActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:launchMode="singleTask"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- Gleo Interface: App Schema(docs/gleo/schema.json)의 function 이름과 같은 action. 스키마 승인 전에는 호출되지 않는다. -->
-            <intent-filter>
-                <action android:name="APPLY_NEXT_DRIVER" />
-                <action android:name="APPLY_DRIVER_PROFILE" />
-                <action android:name="SHOW_DRIVER_PROFILES" />
-                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

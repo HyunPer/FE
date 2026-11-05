@@ -3,9 +3,7 @@ package com.pleos.fe.api
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
@@ -66,10 +64,3 @@ private class BearerInterceptor(private val tokens: TokenStore) : Interceptor {
             ?: chain.request(),
     )
 }
-
-/** 서버가 주는 이미지 경로(/files/{id})를 기본 주소와 합친다. 이미지 로더(Coil 등)에 그대로 넘긴다. */
-fun assetUrl(baseUrl: String, path: String): String = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
-
-/** 테마 이미지 업로드용 multipart 조각. 형식 판정은 서버가 파일 내용으로 한다. */
-fun imagePart(fileName: String, bytes: ByteArray, contentType: String = "image/png"): MultipartBody.Part =
-    MultipartBody.Part.createFormData("file", fileName, bytes.toRequestBody(contentType.toMediaType()))

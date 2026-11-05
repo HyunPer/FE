@@ -6,7 +6,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
-/** 운전석(LHD 기준). 프로필은 운전자 개인 설정이라 운전석에만 적용한다. */
+/** 운전석(LHD 기준). 탑승 감지(착석)에 쓴다. */
 val DRIVER = SeatArea(SeatValue.ROW_1_LEFT)
 
 /**
@@ -25,28 +25,3 @@ suspend fun <T> awaitValue(
         )
     }
 }?.getOrThrow() ?: throw IllegalStateException("$what: 차량 응답 없음")
-
-enum class SetResult { CONFIRMED, SENT }
-
-/**
- * 설정(set) 호출. 문서상 set은 실패할 때만 onFailed가 확실히 오고 onComplete는 보장되지 않는다.
- * 그래서 시간 안에 onComplete가 오면 CONFIRMED, 아무 응답이 없으면 SENT(요청은 보냄), onFailed면 예외로 본다.
- */
-suspend fun awaitSet(
-    timeoutMs: Long = 1_500,
-    call: (onComplete: () -> Unit, onFailed: (Exception) -> Unit) -> Unit,
-): SetResult {
-    val result = withTimeoutOrNull(timeoutMs) {
-        suspendCancellableCoroutine<Result<SetResult>> { cont ->
-            call(
-                { if (cont.isActive) cont.resume(Result.success(SetResult.CONFIRMED)) },
-                { e -> if (cont.isActive) cont.resume(Result.failure(e)) },
-            )
-        }
-    } ?: return SetResult.SENT
-    return result.getOrThrow()
-}
-
-/** 차량 범위에 맞춘다. 범위를 모르면 원래 값. */
-fun <T : Comparable<T>> T.clampTo(min: T?, max: T?): T =
-    if (min == null || max == null) this else coerceIn(min, max)

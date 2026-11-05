@@ -22,5 +22,6 @@ rootProject.name = "pleos-fe"
 
 include(":core-api")
 include(":core-android")
+include(":core-ui")
 include(":phone-app")
 include(":vehicle-app")

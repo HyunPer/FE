@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 탑승 감지 트리거. 시동 시 앱 자동 실행은 서드파티에 허용되지 않으므로, 앱이 떠 있는 동안
- * 운전석 착석(registerSeatOccupancy) + P단(registerGearSelection)을 감지해 한 번만 2단계 적용을 시작한다.
+ * 운전석 착석(registerSeatOccupancy) + P단(registerGearSelection)을 감지해 한 번만 트립을 시작한다.
  * 운전석이 비면 다시 대기한다. Virtual Console에서 착석·기어를 바꿔 시연할 수 있다.
  */
 class BoardingTrigger(

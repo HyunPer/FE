@@ -25,7 +25,7 @@
 pleos.appName=정한이름
 ```
 
-화면에 보이는 이름은 `vehicle-app/src/main/res/values/strings.xml`의 `app_name`입니다. Gleo `invokeWord`(docs/gleo/schema.json)도 같은 이름으로 맞춥니다.
+화면에 보이는 이름은 `vehicle-app`·`phone-app`의 `src/main/res/values/strings.xml` `app_name`입니다(지금은 "쉼표").
 
 ## 서명 키
 
@@ -46,7 +46,8 @@ keyPassword=...
 
 ## 올리기 전 확인
 
-- [ ] 에뮬레이터에 릴리스 APK를 설치해 S1–S5(docs/EMULATOR_QA.md)가 HTTPS 서버로 동작한다
-- [ ] 런처 아이콘이 "Pleos 프로필" 하나뿐이다(QA 화면은 디버그에만 들어감)
+- [ ] 에뮬레이터에 릴리스 APK를 설치해 S1–S7(docs/EMULATOR_QA.md)이 HTTPS 서버로 동작한다
 - [ ] 파일 이름이 `귤까먹는헬창_<앱이름>_release.apk`
-- [ ] 접수 메일 제목 "차량용 앱 개발 공모전_앱명_팀명", 팀원 전원 참조
+- [ ] README.md에 앱 이름·한 줄 소개, 실행 방법, 테스트 환경·필요한 설정, APK 위치가 있다(공식 요건)
+- [ ] 접수: appdevchallenge@hyundai-partners.com, 제목 `[차량용 앱 개발 공모전] 귤까먹는 헬창_정재윤`, 팀원 전원 CC, 서명한 접수양식·동의서 첨부
+- [ ] 수정 제출은 제목 앞에 `[수정제출]`, 전체 자료와 동의서를 다시 첨부(마지막 제출본이 최종)

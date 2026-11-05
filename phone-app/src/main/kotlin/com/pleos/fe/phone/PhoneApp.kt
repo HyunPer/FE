@@ -5,7 +5,6 @@ import android.content.Context
 import com.pleos.fe.api.PhoneApi
 import com.pleos.fe.api.PleosApi
 import com.pleos.fe.api.UserSession
-import com.pleos.fe.api.assetUrl
 import com.pleos.fe.core.android.SecureTokenStore
 
 class PhoneApp : Application() {
@@ -28,9 +27,6 @@ class PhoneContainer(context: Context) {
     private val tokens = SecureTokenStore(context, "phone_session")
     val api: PhoneApi = PleosApi.phone(baseUrl, tokens)
     val session = UserSession(api, tokens)
-
-    /** ThemeSkinDto의 /files/... 경로를 이미지 로더용 전체 주소로. */
-    fun imageUrl(path: String) = assetUrl(baseUrl, path)
 }
 
 val Context.phoneContainer: PhoneContainer get() = (applicationContext as PhoneApp).container
