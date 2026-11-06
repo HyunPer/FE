@@ -37,6 +37,11 @@ class TripMonitor(
     private val vehicle: Vehicle?,
     private val navi: NaviHelper?,
     private val scope: CoroutineScope,
+    /**
+     * 회전 안내(TBT) 요청. onTBTInfo는 getTBTInfo()의 응답으로 오므로 주행 중 주기적으로 묻는다
+     * (NAVI_ROUTE 권한). 주의 구간·도착은 경로 안내 중 내비가 먼저 보내 준다.
+     */
+    private val requestTbt: () -> Unit = { navi?.getTBTInfo() },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val current = MutableStateFlow(MotionRiskModel.evaluate(MotionSignals()))
@@ -143,7 +148,9 @@ class TripMonitor(
 
         ticker?.cancel()
         ticker = scope.launch {
+            var ticks = 0
             while (isActive) {
+                if (ticks++ % TBT_EVERY_TICKS == 0) runCatching(requestTbt).onFailure { e -> warn("회전 안내 요청", e) }
                 tick()
                 delay(TICK_MS)
             }
@@ -168,7 +175,8 @@ class TripMonitor(
     }
 
     /**
-     * 시연용(디버그 화면에서만 부른다). 에뮬레이터에서 바꿀 수 없는 신호(앞의 급커브, 브레이크, 핸들, 휴게소)를 흉내 낸다.
+     * 시연용(디버그 화면에서만 부른다). 내비 경로 안내 없이는 오지 않는 신호(앞의 급커브·턱, 휴게소)와,
+     * 시연 시간 안에 쌓기 번거로운 브레이크·핸들 변화를 흉내 낸다(브레이크·핸들은 Virtual Console로도 바꿀 수 있다).
      * 실제 신호와 같은 경로로 위험도를 다시 계산하므로 화면·요약도 똑같이 바뀐다.
      */
     fun simulate(
@@ -221,6 +229,8 @@ class TripMonitor(
     private companion object {
         const val TAG = "TripMonitor"
         const val TICK_MS = 5_000L
+        /** 회전 안내는 10초마다 묻는다(앞 2km 급커브 수는 그 사이 크게 변하지 않는다). */
+        const val TBT_EVERY_TICKS = 2
         const val BRAKE_WINDOW_MS = 3 * 60_000L
         const val STEERING_WINDOW_MS = 60_000L
         const val AHEAD_M = 2_000.0

@@ -11,6 +11,9 @@
     <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
     <!-- 기어 상태(P단) -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- 브레이크 페달·핸들 각도도 CAR_DRIVE(SDK @RequiresPermission 확인, 11/6) -->
+    <!-- NaviHelper 정보 조회(getTBTInfo: 앞길 급커브·휴게소) -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
 
     <uses-feature
         android:name="android.hardware.type.automotive"

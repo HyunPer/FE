@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pleos.fe.api.care.RiskLevel
 import com.pleos.fe.api.model.MotionSensitivity
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -63,5 +65,21 @@ class TripMonitorTest {
         assertEquals(12_000.0, monitor.restAreaAheadM.value!!, 0.0)
         monitor.resetSimulation()
         assertNull(monitor.restAreaAheadM.value)
+    }
+
+    @Test
+    fun `주행 중에는 회전 안내를 10초마다 내비에 묻는다`() = runTest {
+        var requests = 0
+        val monitor = TripMonitor(null, null, backgroundScope, requestTbt = { requests++ }) { now }
+        monitor.start()
+        runCurrent()
+        assertEquals(1, requests) // 시작하자마자 한 번
+
+        advanceTimeBy(20_001)
+        assertEquals(3, requests) // 10초, 20초
+
+        monitor.stop()
+        advanceTimeBy(30_000)
+        assertEquals(3, requests) // 끝나면 더 묻지 않는다
     }
 }
