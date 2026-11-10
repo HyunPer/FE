@@ -74,6 +74,8 @@ class TripMonitor(
     private var sharpTurnsPassed = 0
     private var peakRisk = 0
     private var ticker: Job? = null
+    /** 시연 신호를 쓰는 중이면 실제 내비 응답(경로 안내 없음 = 빈 목록)이 시연 값을 덮지 않게 한다. */
+    private var simulating = false
 
     private val brakeListener = object : BrakePedalStatusListener {
         override fun onBrakePedalStatusUpdated(pressed: Boolean?) {
@@ -104,23 +106,28 @@ class TripMonitor(
     }
 
     private val naviListener = object : NaviHelperEventListener {
-        override fun onTBTInfo(list: List<TBTInfo>) {
-            val sharp = list.filter { it.type in SHARP_TURNS && it.distance <= AHEAD_M }
-            sharpTurnsAhead = sharp.size
-            // TBT에는 식별자가 없어, 가장 가까운 급커브가 100m 안으로 들어올 때 지나간 것으로 센다
-            val nearest = sharp.minOfOrNull { it.distance }
-            if (nearest != null && nearest < PASSED_M && (nearestSharpTurnM ?: Double.MAX_VALUE) >= PASSED_M) sharpTurnsPassed++
-            nearestSharpTurnM = nearest
-            restArea.value = list.filter { it.type in REST_STOPS }.minOfOrNull { it.distance }
-        }
+        override fun onTBTInfo(list: List<TBTInfo>) = handleTbt(list)
 
         override fun onCautionPointInfo(list: List<CautionPoint>) {
+            if (simulating) return
             bumpsAhead = list.count { it.type in BUMPY && it.remainDistance <= AHEAD_M }
         }
 
         override fun onDestinationArrived(info: DestinationArrivedInfo) {
             arrivedEvents.tryEmit(Unit)
         }
+    }
+
+    /** 회전 안내 응답. 시연 중에는 무시한다. */
+    internal fun handleTbt(list: List<TBTInfo>) {
+        if (simulating) return
+        val sharp = list.filter { it.type in SHARP_TURNS && it.distance <= AHEAD_M }
+        sharpTurnsAhead = sharp.size
+        // TBT에는 식별자가 없어, 가장 가까운 급커브가 100m 안으로 들어올 때 지나간 것으로 센다
+        val nearest = sharp.minOfOrNull { it.distance }
+        if (nearest != null && nearest < PASSED_M && (nearestSharpTurnM ?: Double.MAX_VALUE) >= PASSED_M) sharpTurnsPassed++
+        nearestSharpTurnM = nearest
+        restArea.value = list.filter { it.type in REST_STOPS }.minOfOrNull { it.distance }
     }
 
     fun start() {
@@ -137,6 +144,7 @@ class TripMonitor(
         congestedMs = 0
         sharpTurnsPassed = 0
         peakRisk = 0
+        simulating = false
         parkedState.value = true
 
         vehicle?.let {
@@ -190,6 +198,7 @@ class TripMonitor(
         congestionMinutes: Int = 0,
     ) {
         val now = clock()
+        simulating = true
         // 시연 시간을 줄이려고 이동·막힘 시간과 지나간 급커브를 앞당겨 쌓는다(요약에 그대로 반영)
         startedAt -= elapsedMinutes * 60_000L
         congestedMs += congestionMinutes * 60_000L

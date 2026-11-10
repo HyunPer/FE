@@ -103,4 +103,15 @@ class TripMonitorTest {
         assertEquals(true, summary.congestionMinutes >= 8)
         assertEquals(true, summary.peakRisk >= 65)
     }
+
+    @Test
+    fun `시연 중에는 경로 안내 없는 내비 응답(빈 목록)이 시연 급커브·휴게소를 지우지 않는다`() = runTest {
+        val monitor = TripMonitor(null, null, backgroundScope, requestTbt = {}) { now }
+        monitor.start()
+        monitor.handleTbt(emptyList()) // 시연 전: 실제 응답 반영
+        monitor.simulate(turnsAhead = 4, restAreaM = 12_000.0)
+        monitor.handleTbt(emptyList()) // 에뮬레이터 내비가 10초마다 빈 목록을 돌려줘도
+        assertEquals(true, monitor.risk.value.reasons.any { it.contains("급커브 4곳") })
+        assertEquals(12_000.0, monitor.restAreaAheadM.value!!, 0.0)
+    }
 }
