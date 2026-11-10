@@ -7,9 +7,11 @@ Pleos Connect 에뮬레이터에서 쉼표 차량 앱을 띄우고, 시연 흐�
 | 단계 | 내용 |
 | --- | --- |
 | Android Studio | SDK Platform 34·35, Platform-Tools 설치 |
-| 시스템 이미지 | Playground 문서의 **Pleos Connect Emulator**(API 34) 이미지를 SDK Manager에 추가 |
-| AVD | 위 이미지로 생성. **RAM 4GB**, Boot option **Cold boot**(Quick boot는 Vehicle Service가 꼬일 수 있음) |
-| 폰 | 일반 Pixel 에뮬레이터(API 34) 하나 더 |
+| 시스템 이미지 | SDK Manager › SDK Update Sites › **+** → Name `Pleos Connect System Image`, URL(Windows/Linux) `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml` (Mac은 `crp-arm64-sys-img.xml`). SDK Platforms › Show Package Details › API 34의 **Pleos Connect v2.1.0 APIs** 체크(약 4.1GB, 42dot SDK 라이선스 동의) → Android Studio 재시작 |
+| AVD | Device Manager › Create device › Form Factor **Automotive** › Pleos Connect v2.1.0. Advanced Settings에서 Default boot **Cold**, **RAM 4GB**(Quick boot는 Vehicle Service가 꼬일 수 있음) |
+| 폰 | 일반 Pixel 에뮬레이터(Google APIs API 34) 하나 더, 또는 실제 폰 |
+
+출처: [Pleos Connect Emulator 설치 및 실행](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)(11/9 확인).
 | BE | PC에서 `cd BE && ./gradlew bootRun` → `http://localhost:8090` (에뮬레이터에서는 `http://10.0.2.2:8090`) |
 
 설치와 로그:
@@ -59,6 +61,7 @@ adb shell cmd hmg_car_service --service drivingstate driving_regulation off
 | S4 | 차량 앱 "지금 출발" (또는 Virtual Console에서 운전석 점유 끔→켬, 기어 P) | 주행 중 화면: "편안한 길이에요" + 멀미 위험도 막대 |
 | S5 | 내비로 경로 안내 중(가능하면 굽은 길) | 급커브·주의 구간이 2km 안에 들어오면 "멀미 주의"/"조금 흔들릴 수 있어요"와 이유, 위험이 높으면 다음 휴게소 거리 |
 | S5‴ | Virtual Console 기어 **D** → Brake Pedal을 0→60→0%로 1분에 5번 이상, Steering Angle을 −300↔300°로 몇 번 | "가다 서다가 잦아요"·"구불구불한 길이에요"가 이유에 뜨고 위험도가 오름(브레이크가 1분에 4번 넘는 동안은 도착 요약의 막힘 시간에 쌓임) |
+| S5⁗ | 디버그 빌드 주행 화면(기어 P) 시연 패널 **▶ 가족 나들이** | 약 1분 자동 재생 후 도착 화면. 녹화 순서는 [DEMO.md](DEMO.md) |
 | S5′ | (내비 경로 안내를 못 걸 때) Virtual Console 기어를 **P**로 두고, 디버그 빌드 주행 화면 아래 **시연** 버튼: 급커브 앞 → 구불길 → 휴게소 12km | 위험도가 주의 → 멀미 주의로 오르고, S3에서 고른 쉬는 방식(예: 바깥 바람)으로 권유가 바뀜 |
 | S5″ | Virtual Console 기어를 **D**로 | "도착했어요"·시연 버튼이 사라지고 "도착하면 자동으로 요약해요"만 보임(주행 중 조작 방지) |
 | S6 | 차량 앱 기어 P에서 "도착했어요" (또는 내비 목적지 도착) | 도착 화면: 이동·막힘 시간, 급커브, 최고 위험도 → "30초 숨 고르기"(4초 들숨·6초 날숨 × 3) |

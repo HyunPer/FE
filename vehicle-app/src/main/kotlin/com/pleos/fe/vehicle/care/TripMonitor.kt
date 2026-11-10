@@ -185,14 +185,26 @@ class TripMonitor(
         brakePresses: Int = 0,
         steeringDeg: Double = 0.0,
         restAreaM: Double? = null,
+        passedTurns: Int = 0,
+        elapsedMinutes: Int = 0,
+        congestionMinutes: Int = 0,
     ) {
         val now = clock()
+        // 시연 시간을 줄이려고 이동·막힘 시간과 지나간 급커브를 앞당겨 쌓는다(요약에 그대로 반영)
+        startedAt -= elapsedMinutes * 60_000L
+        congestedMs += congestionMinutes * 60_000L
+        sharpTurnsPassed += passedTurns
         turnsAhead?.let { sharpTurnsAhead = it }
         bumps?.let { bumpsAhead = it }
         repeat(brakePresses) { brakes.add(now) }
         if (steeringDeg > 0) steering.add(now, steeringDeg)
         restAreaM?.let { restArea.value = it }
         tick()
+    }
+
+    /** 시연용: 기어 신호 없이 주행(false)·정차(true) 화면을 보여 준다. 실제 기어가 바뀌면 그 값으로 덮인다. */
+    fun simulateParked(parked: Boolean) {
+        parkedState.value = parked
     }
 
     /** 시연용 신호를 모두 지운다. */

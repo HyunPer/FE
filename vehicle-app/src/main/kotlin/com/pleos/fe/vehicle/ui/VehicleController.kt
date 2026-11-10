@@ -10,6 +10,7 @@ import com.pleos.fe.api.model.TripResponse
 import com.pleos.fe.api.model.TripSummaryRequest
 import com.pleos.fe.api.model.VehicleSelfResponse
 import com.pleos.fe.vehicle.VehicleContainer
+import com.pleos.fe.vehicle.care.TripMonitor
 import com.pleos.fe.vehicle.sdk.BoardingTrigger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -55,6 +56,25 @@ enum class DemoSignal(val label: String) {
     WINDING("구불길"),
     REST_AREA("휴게소 12km"),
     RESET("초기화"),
+    STORY("▶ 가족 나들이"),
+}
+
+/**
+ * 자동 시연 "가족 나들이": 출발 → 가다 서다 → 급커브 예고 → 구불길 → 휴게소 안내 → 지나감 → 도착.
+ * 약 1분. 각 단계는 실제 신호와 같은 계산 경로(TripMonitor.simulate)를 탄다.
+ */
+internal object DemoStory {
+    data class Step(val afterMs: Long, val caption: String, val apply: (TripMonitor) -> Unit)
+
+    val steps = listOf(
+        Step(0, "출발") { it.resetSimulation(); it.simulateParked(false); it.simulate(elapsedMinutes = 12) },
+        Step(6_000, "시내를 빠져나가는 중") { it.simulate(brakePresses = 18, congestionMinutes = 8, elapsedMinutes = 8) },
+        Step(10_000, "산길 앞") { it.simulate(turnsAhead = 4, bumps = 2, elapsedMinutes = 10) },
+        Step(12_000, "구불구불한 길") { it.simulate(steeringDeg = 420.0) },
+        Step(8_000, "휴게소 안내") { it.simulate(restAreaM = 12_000.0) },
+        Step(14_000, "산길을 지남") { it.resetSimulation(); it.simulate(passedTurns = 4, elapsedMinutes = 15) },
+        Step(8_000, "도착") { it.simulateParked(true) },
+    )
 }
 
 class VehicleController(
@@ -70,6 +90,7 @@ class VehicleController(
     private var pairingPoll: Job? = null
     private var tripWatch: Job? = null
     private var trigger: BoardingTrigger? = null
+    private var story: Job? = null
 
     fun start() {
         if (work == null) register()
@@ -123,6 +144,7 @@ class VehicleController(
     /** 도착(내비 도착 알림 또는 버튼). 주행 요약을 서버에 남긴다. */
     fun finishTrip() {
         val driving = current.value as? VehicleScreen.Driving ?: return
+        story?.cancel()
         tripWatch?.cancel()
         submitFinish(driving.tripId, monitor.stop())
     }
@@ -136,6 +158,18 @@ class VehicleController(
             DemoSignal.WINDING -> monitor.simulate(steeringDeg = 420.0)
             DemoSignal.REST_AREA -> monitor.simulate(restAreaM = 12_000.0)
             DemoSignal.RESET -> monitor.resetSimulation()
+            DemoSignal.STORY -> playStory()
+        }
+    }
+
+    private fun playStory() {
+        story?.cancel()
+        story = scope.launch {
+            DemoStory.steps.forEach { step ->
+                delay(step.afterMs)
+                step.apply(monitor)
+            }
+            finishTrip()
         }
     }
 

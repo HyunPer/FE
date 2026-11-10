@@ -53,8 +53,9 @@
    ./gradlew :phone-app:installDebug
    ```
 4. 폰에서 가입 → 차량 화면의 연결 코드 입력 → 차량 앱 "지금 출발"(또는 Virtual Console에서 운전석 착석 + 기어 P) → "도착했어요" → 폰 홈에서 체크인.
+5. (디버그 빌드) 주행 화면 아래 시연 패널의 **▶ 가족 나들이**를 누르면 출발 → 급커브 예고 → 구불길 → 휴게소 안내 → 도착이 약 1분 동안 자동으로 재생됩니다. 에뮬레이터에서 내비 경로 안내를 걸기 어려울 때 씁니다.
 
-자세한 에뮬레이터 세팅과 시연 시나리오는 [docs/EMULATOR_QA.md](docs/EMULATOR_QA.md)에 있습니다.
+자세한 에뮬레이터 세팅과 시연 시나리오는 [docs/EMULATOR_QA.md](docs/EMULATOR_QA.md), 녹화 순서는 [docs/DEMO.md](docs/DEMO.md)에 있습니다.
 
 ## 테스트 환경·필요한 설정
 
@@ -99,6 +100,7 @@ PLEOS_E2E_BASE_URL=http://localhost:8090/ ./gradlew :core-api:test --tests '*End
 ## 문서
 
 - [에뮬레이터 세팅·시연·실측](docs/EMULATOR_QA.md)
+- [데모 녹화(자동 시연 "가족 나들이")](docs/DEMO.md)
 - [안드로이드 스튜디오에서 BE 연동하기](docs/BACKEND_GUIDE.md)
 - [제출용 릴리스 APK](docs/RELEASE.md)
 

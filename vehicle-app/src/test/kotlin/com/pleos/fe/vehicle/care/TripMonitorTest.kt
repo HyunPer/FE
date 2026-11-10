@@ -82,4 +82,25 @@ class TripMonitorTest {
         advanceTimeBy(30_000)
         assertEquals(3, requests) // 끝나면 더 묻지 않는다
     }
+
+    @Test
+    fun `자동 시연 가족 나들이는 주행 화면에서 시작해 도착 정차로 끝나고, 요약이 그럴듯하게 쌓인다`() = runTest {
+        val monitor = TripMonitor(null, null, backgroundScope, requestTbt = {}) { now }
+        monitor.start()
+        var peakLevel = RiskLevel.LOW
+        com.pleos.fe.vehicle.ui.DemoStory.steps.forEachIndexed { i, step ->
+            now += step.afterMs
+            step.apply(monitor)
+            if (i == 0) assertEquals(false, monitor.parked.value) // 출발하면 주행 화면(버튼 숨김)
+            if (monitor.risk.value.level > peakLevel) peakLevel = monitor.risk.value.level
+        }
+        assertEquals(true, monitor.parked.value) // 도착하면 정차
+        assertEquals(RiskLevel.HIGH, peakLevel)
+
+        val summary = monitor.stop()
+        assertEquals(45, summary.drivingMinutes) // 앞당긴 45분 + 실제 58초(분 단위 내림)
+        assertEquals(4, summary.sharpTurns)
+        assertEquals(true, summary.congestionMinutes >= 8)
+        assertEquals(true, summary.peakRisk >= 65)
+    }
 }
