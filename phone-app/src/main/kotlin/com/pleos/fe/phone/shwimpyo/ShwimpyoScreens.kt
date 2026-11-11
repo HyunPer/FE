@@ -57,7 +57,7 @@ import com.pleos.fe.phone.ui.PhoneSurface
 import com.pleos.fe.phone.ui.PhoneTab
 import com.pleos.fe.phone.ui.PillButton
 import com.pleos.fe.phone.ui.SectionTitle
-import com.pleos.fe.ui.CarIllustration
+import com.pleos.fe.ui.PleosCar
 import java.time.Instant
 import kotlinx.coroutines.delay
 import java.time.ZoneId
@@ -65,7 +65,6 @@ import java.time.format.DateTimeFormatter
 
 // 쉼표 폰 앱 화면. 모두 상태 없는 함수라 캡처 테스트·미리보기에서 그대로 그릴 수 있다.
 
-private val CarColor = Color(0xFF6E7A60)
 
 /** 앱 진입점: 단계(가입 → 차량 연결 → 사용)와 탭을 고른다. */
 @Composable
@@ -99,7 +98,7 @@ fun SignUpScreen(busy: Boolean, initialNickname: String = "", onSignUp: (String)
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         PText("쉼표", 44.sp, weight = FontWeight.Bold)
         PText("함께 타는 사람의 몸과 마음을 챙기는 차", 16.sp, Modifier.padding(top = 6.dp), sub = true)
-        CarIllustration(CarColor, Modifier.fillMaxWidth().padding(vertical = 28.dp))
+        PleosCar(Modifier.fillMaxWidth().padding(vertical = 28.dp))
         OutlinedTextField(nickname, { nickname = it }, Modifier.fillMaxWidth(), label = { Text("가족이 부르는 이름 (예: 엄마)") }, singleLine = true)
         Spacer(Modifier.height(16.dp))
         PillButton("시작하기", Modifier.fillMaxWidth(), onClick = { if (nickname.isNotBlank() && !busy) onSignUp(nickname) })
@@ -123,15 +122,17 @@ fun PairScreen(nickname: String, busy: Boolean, onPair: (String) -> Unit) {
 @Composable
 fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, onRefresh: () -> Unit, initialNote: String = "") {
     val vehicle = state.vehicle
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+    // 제목 줄은 고정하고 그 아래만 스크롤한다(스크롤해도 제목이 상태 표시줄에 반쯤 걸려 잘리지 않게)
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 PText(vehicle?.nickname ?: vehicle?.model ?: "우리 차", 22.sp, weight = FontWeight.SemiBold)
                 PText("${state.me?.nickname.orEmpty()}님 · 쉼표", 13.sp, sub = true)
             }
             PillButton("새로고침", filled = false, onClick = onRefresh)
         }
-        CarIllustration(CarColor, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        PleosCar(Modifier.fillMaxWidth().padding(start = 28.dp, end = 28.dp, top = 4.dp, bottom = 12.dp))
 
         val last = state.trips.firstOrNull { it.endedAt != null }
         Column(Modifier.padding(horizontal = 20.dp)) {
@@ -145,6 +146,7 @@ fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, 
                 TripFacts(last)
             }
             state.pendingCheckIn?.let { CheckInCard(it, state.busy, onCheckIn, initialNote) }
+        }
         }
     }
 }

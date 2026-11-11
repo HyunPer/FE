@@ -30,9 +30,9 @@ class VehicleEmulatorScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun shot(name: String, content: @Composable () -> Unit) {
+    private fun shot(name: String, dark: Boolean = false, content: @Composable () -> Unit) {
         compose.mainClock.autoAdvance = false
-        compose.setContent { ScaledSurface { content() } }
+        compose.setContent { ScaledSurface(dark) { content() } }
         compose.mainClock.advanceTimeBy(300)
         compose.onRoot().captureRoboImage("build/screens/emulator_$name.png")
     }
@@ -55,6 +55,14 @@ class VehicleEmulatorScreenshotTest {
     @Test
     fun careParkedWithDemo() = shot("3_care_parked_demo") {
         CareScreen(MotionRiskModel.evaluate(MotionSignals(sharpTurnsAhead = 3, brakesPerMinute = 4.0)), onArrive = {}, restStyle = RestStyle.MUSIC, onDemo = {})
+    }
+
+    @Test
+    fun waitingNight() = shot("5_waiting_night", dark = true) { WaitingScreen(VehicleSelfResponse("v1", "Pleos Connect", null, "482913", 3)) {} }
+
+    @Test
+    fun careNight() = shot("6_care_night", dark = true) {
+        CareScreen(high, onArrive = {}, restStyle = RestStyle.FRESH_AIR, restAreaAheadM = 12_000.0, parked = false)
     }
 
     @Test

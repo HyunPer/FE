@@ -97,8 +97,7 @@ fun PhoneSurface(palette: PhonePalette = LightPalette, content: @Composable BoxS
         Box(
             Modifier
                 .fillMaxSize()
-                .background(palette.background)
-                .background(Brush.verticalGradient(0f to palette.glow, 0.42f to palette.background)),
+                .background(palette.background),
             content = content,
         )
     }

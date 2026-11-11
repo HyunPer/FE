@@ -39,7 +39,7 @@ class VehicleScreenshotTest {
 
     private fun shot(name: String, advanceMs: Long = 300, content: @Composable () -> Unit) {
         compose.mainClock.autoAdvance = false
-        compose.setContent { Box(Modifier.fillMaxSize().background(Color(0xFF0C1016))) { content() } }
+        compose.setContent { VehicleTheme { content() } }
         compose.mainClock.advanceTimeBy(advanceMs)
         compose.onRoot().captureRoboImage("build/screens/vehicle_$name.png")
     }

@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,16 +58,16 @@ import kotlin.math.roundToInt
 
 // 쉼표 차량 화면. 주행 중에는 한눈에 읽히도록 큰 숫자 하나 + 큰 글자 한 줄 + 짧은 권유만 둔다.
 
-private val CardColor = Surface
-private val Track = Color(0xFF262E3A)
-private val Primary = TextColor
-private val Secondary = SubText
+private val CardColor: Color @Composable @ReadOnlyComposable get() = Surface
+private val Primary: Color @Composable @ReadOnlyComposable get() = TextColor
+private val Secondary: Color @Composable @ReadOnlyComposable get() = SubText
 
 private val RiskLevel.color: Color
+    @Composable @ReadOnlyComposable
     get() = when (this) {
-        RiskLevel.LOW -> Color(0xFF3DDC97)
-        RiskLevel.CAUTION -> Color(0xFFFFC145)
-        RiskLevel.HIGH -> Color(0xFFFF6B5E)
+        RiskLevel.LOW -> LocalVehicleColors.current.riskLow
+        RiskLevel.CAUTION -> LocalVehicleColors.current.riskCaution
+        RiskLevel.HIGH -> LocalVehicleColors.current.riskHigh
     }
 
 private val RiskLevel.headline: String
@@ -105,9 +106,16 @@ fun CareScreen(
                 CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo, stacked = true)
                 ReasonsCard(risk, parked, onArrive, Modifier.fillMaxWidth().weight(1f))
             }
+        } else if (tall) {
+            // 세로 여유가 큰 가로 화면: 위에 큰 계기와 글, 아래에 이유 카드를 화면 너비로 놓아 빈 곳을 없앤다
+            Column(Modifier.fillMaxSize().padding(56.dp), verticalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterVertically)) {
+                CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo = null, stacked = false, gauge = 300.dp, large = true)
+                ReasonsCard(risk, parked, onArrive, Modifier.fillMaxWidth(), columns = 2)
+                if (parked) onDemo?.let { DemoPanel(it) }
+            }
         } else {
             Row(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo, stacked = tall) }
+                Box(Modifier.weight(1f)) { CareSummary(risk, restStyle, restAreaAheadM, parked, onDemo, stacked = false) }
                 Spacer(Modifier.width(40.dp))
                 ReasonsCard(risk, parked, onArrive, Modifier.width(400.dp).fillMaxHeight())
             }
@@ -124,6 +132,8 @@ private fun CareSummary(
     parked: Boolean,
     onDemo: ((DemoSignal) -> Unit)?,
     stacked: Boolean,
+    gauge: Dp = if (stacked) 230.dp else 190.dp,
+    large: Boolean = false,
 ) {
     val color by animateColorAsState(risk.level.color, tween(COLOR_MS), label = "riskColor")
     Column {
@@ -134,14 +144,14 @@ private fun CareSummary(
         }
         Spacer(Modifier.height(20.dp))
         if (stacked) {
-            RiskGauge(risk, color, 230.dp)
+            RiskGauge(risk, color, gauge)
             Spacer(Modifier.height(28.dp))
-            CareText(risk, color, restStyle, restAreaAheadM)
+            CareText(risk, color, restStyle, restAreaAheadM, large)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RiskGauge(risk, color, 190.dp)
-                Spacer(Modifier.width(36.dp))
-                CareText(risk, color, restStyle, restAreaAheadM)
+                RiskGauge(risk, color, gauge)
+                Spacer(Modifier.width(if (large) 56.dp else 36.dp))
+                CareText(risk, color, restStyle, restAreaAheadM, large)
             }
         }
         // 시연 패널도 정차 중에만(디버그 빌드)
@@ -150,11 +160,16 @@ private fun CareSummary(
 }
 
 @Composable
-private fun CareText(risk: MotionRisk, color: Color, restStyle: RestStyle, restAreaAheadM: Double?) {
+private fun CareText(risk: MotionRisk, color: Color, restStyle: RestStyle, restAreaAheadM: Double?, large: Boolean = false) {
     Column {
-        Text(risk.level.headline, color = Primary, fontSize = 48.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text(tipFor(risk.level, restStyle), color = Primary.copy(alpha = 0.85f), fontSize = 26.sp, lineHeight = 34.sp)
+        Text(risk.level.headline, color = Primary, fontSize = if (large) 64.sp else 48.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(if (large) 14.dp else 10.dp))
+        Text(
+            tipFor(risk.level, restStyle),
+            color = Primary.copy(alpha = 0.85f),
+            fontSize = if (large) 30.sp else 26.sp,
+            lineHeight = if (large) 40.sp else 34.sp,
+        )
         // 위험이 높을 때만 경로상 다음 휴게소를 권한다(내비 경로 안내 중일 때)
         if (risk.level == RiskLevel.HIGH && restAreaAheadM != null) {
             Spacer(Modifier.height(16.dp))
@@ -163,7 +178,7 @@ private fun CareText(risk: MotionRisk, color: Color, restStyle: RestStyle, restA
                 color = color,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.background(color.copy(alpha = 0.14f), CircleShape).padding(horizontal = 20.dp, vertical = 10.dp),
+                modifier = Modifier.background(color.copy(alpha = 0.12f), ButtonShape).padding(horizontal = 18.dp, vertical = 10.dp),
             )
         }
     }
@@ -173,39 +188,49 @@ private fun CareText(risk: MotionRisk, color: Color, restStyle: RestStyle, restA
 @Composable
 private fun RiskGauge(risk: MotionRisk, color: Color, diameter: Dp) {
     val progress by animateFloatAsState(risk.score / 100f, tween(GAUGE_MS), label = "risk")
+    val track = Track
     Box(Modifier.size(diameter), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = size.minDimension * 0.09f
             val topLeft = Offset(stroke / 2, stroke / 2)
             val arc = Size(size.width - stroke, size.height - stroke)
-            drawArc(Track, GAUGE_START, GAUGE_SWEEP, false, topLeft, arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            drawArc(track, GAUGE_START, GAUGE_SWEEP, false, topLeft, arc, style = Stroke(stroke, cap = StrokeCap.Round))
             if (progress > 0.005f) {
                 drawArc(color, GAUGE_START, GAUGE_SWEEP * progress, false, topLeft, arc, style = Stroke(stroke, cap = StrokeCap.Round))
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${(progress * 100).roundToInt()}", color = Primary, fontSize = 60.sp, fontWeight = FontWeight.Bold)
-            Text("멀미 위험도", color = Secondary, fontSize = 16.sp)
+            Text("${(progress * 100).roundToInt()}", color = Primary, fontSize = (diameter.value * 0.32f).sp, fontWeight = FontWeight.Bold)
+            Text("멀미 위험도", color = Secondary, fontSize = (diameter.value * 0.085f).sp)
         }
     }
 }
 
 /** 왜 그런지: 위험도를 올린 항목과, 항목별 상한 대비 얼마나 찼는지. */
 @Composable
-private fun ReasonsCard(risk: MotionRisk, parked: Boolean, onArrive: () -> Unit, modifier: Modifier) {
+private fun ReasonsCard(risk: MotionRisk, parked: Boolean, onArrive: () -> Unit, modifier: Modifier, columns: Int = 1) {
     val color by animateColorAsState(risk.level.color, tween(COLOR_MS), label = "factorColor")
-    Column(modifier.background(CardColor, RoundedCornerShape(28.dp)).padding(28.dp)) {
+    Column(modifier.background(CardColor, CardShape).padding(28.dp)) {
         Text("왜 그런가요", color = Secondary, fontSize = 20.sp)
         Spacer(Modifier.height(16.dp))
         val rows = risk.factors.ifEmpty { risk.reasons.map { RiskFactor(it, 0, 0) } }
         if (rows.isEmpty()) Text("흔들릴 만한 구간이 없어요", color = Primary, fontSize = 22.sp)
-        rows.forEach { FactorRow(it, color) }
-        Spacer(Modifier.weight(1f))
+        if (columns > 1) {
+            // 화면 너비를 쓰는 카드: 항목을 여러 열로 나눠 크게 보여준다
+            rows.chunked(columns).forEach { line ->
+                Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+                    line.forEach { Box(Modifier.weight(1f)) { FactorRow(it, color, large = true) } }
+                    repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        } else {
+            rows.forEach { FactorRow(it, color) }
+            Spacer(Modifier.weight(1f))
+        }
         // 운전 중 화면 조작을 줄이려고, 버튼은 P단(정차)일 때만 보여준다. 주행 중 도착은 내비가 알려준다.
         if (parked) {
-            OutlinedButton(onArrive, Modifier.fillMaxWidth().height(64.dp)) {
-                Text("도착했어요", color = Primary, fontSize = 22.sp)
-            }
+            SecondaryButton("도착했어요", onArrive, if (columns > 1) Modifier.width(280.dp) else Modifier.fillMaxWidth(), height = 64.dp)
         } else {
             Text("도착하면 자동으로 요약해요", color = Secondary, fontSize = 18.sp)
         }
@@ -213,14 +238,15 @@ private fun ReasonsCard(risk: MotionRisk, parked: Boolean, onArrive: () -> Unit,
 }
 
 @Composable
-private fun FactorRow(factor: RiskFactor, color: Color) {
-    Column(Modifier.padding(bottom = 14.dp)) {
-        Text(factor.label, color = Primary, fontSize = 20.sp)
+private fun FactorRow(factor: RiskFactor, color: Color, large: Boolean = false) {
+    val bar = if (large) 8.dp else 5.dp
+    Column(Modifier.padding(bottom = if (large) 22.dp else 14.dp)) {
+        Text(factor.label, color = Primary, fontSize = if (large) 26.sp else 20.sp)
         if (factor.max > 0) {
             val fill by animateFloatAsState((factor.points.toFloat() / factor.max).coerceIn(0.04f, 1f), tween(GAUGE_MS), label = "factor")
-            Spacer(Modifier.height(7.dp))
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(Track)) {
-                Box(Modifier.fillMaxWidth(fill).height(5.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.height(if (large) 10.dp else 7.dp))
+            Box(Modifier.fillMaxWidth().height(bar).clip(CircleShape).background(Track)) {
+                Box(Modifier.fillMaxWidth(fill).height(bar).clip(CircleShape).background(color))
             }
         }
     }
@@ -238,7 +264,7 @@ private fun DemoPanel(onDemo: (DemoSignal) -> Unit) {
     ) {
         Text("시연", color = Secondary, fontSize = 14.sp)
         DemoSignal.entries.forEach { signal ->
-            OutlinedButton({ onDemo(signal) }, Modifier.height(44.dp)) { Text(signal.label, color = Secondary, fontSize = 14.sp) }
+            OutlinedButton({ onDemo(signal) }, Modifier.height(44.dp), shape = ButtonShape) { Text(signal.label, color = Secondary, fontSize = 14.sp) }
         }
     }
 }
@@ -270,16 +296,13 @@ fun ArrivalScreen(trip: TripResponse, onDone: () -> Unit) {
         Text("내리기 전에 30초만 숨을 고르고, 폰에서 오늘 이동을 한 줄로 남겨 보세요", color = Secondary, fontSize = 22.sp)
         Spacer(Modifier.height(28.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Button(
-                { breathing = true },
-                Modifier.height(76.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
-            ) { Text("30초 숨 고르기", fontSize = 24.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 8.dp)) }
-            OutlinedButton(onDone, Modifier.height(76.dp)) { Text("확인", color = Primary, fontSize = 24.sp, modifier = Modifier.padding(horizontal = 8.dp)) }
+            PrimaryButton("30초 숨 고르기", { breathing = true })
+            SecondaryButton("확인", onDone, fontSize = 24.sp)
         }
     }
 }
 
+@Composable
 private fun peakColor(peakRisk: Int): Color = when {
     peakRisk >= 65 -> RiskLevel.HIGH.color
     peakRisk >= 35 -> RiskLevel.CAUTION.color
@@ -289,7 +312,7 @@ private fun peakColor(peakRisk: Int): Color = when {
 /** 도착 요약의 숫자 하나. */
 @Composable
 private fun StatTile(label: String, value: String, unit: String, valueColor: Color = Primary) {
-    Column(Modifier.widthIn(min = 150.dp).background(CardColor, RoundedCornerShape(20.dp)).padding(horizontal = 22.dp, vertical = 16.dp)) {
+    Column(Modifier.widthIn(min = 150.dp).background(CardColor, CardShape).padding(horizontal = 22.dp, vertical = 16.dp)) {
         Text(label, color = Secondary, fontSize = 18.sp)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, color = valueColor, fontSize = 44.sp, fontWeight = FontWeight.Bold)
@@ -327,7 +350,7 @@ fun BreathingScreen(onFinish: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             Text(if (inhale) "천천히 들이쉬고" else "길게 내쉬고", color = Primary, fontSize = 52.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(36.dp))
-            OutlinedButton(onFinish, Modifier.height(76.dp)) { Text("그만하기", color = Primary, fontSize = 22.sp, modifier = Modifier.padding(horizontal = 8.dp)) }
+            SecondaryButton("그만하기", onFinish)
         }
     }
     Adaptive { portrait ->
