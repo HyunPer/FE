@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,7 @@ import com.pleos.fe.phone.ui.PillButton
 import com.pleos.fe.phone.ui.SectionTitle
 import com.pleos.fe.ui.CarIllustration
 import java.time.Instant
+import kotlinx.coroutines.delay
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -67,18 +69,18 @@ private val CarColor = Color(0xFF6E7A60)
 
 /** 앱 진입점: 단계(가입 → 차량 연결 → 사용)와 탭을 고른다. */
 @Composable
-fun ShwimpyoApp(viewModel: ShwimpyoViewModel) {
+fun ShwimpyoApp(viewModel: ShwimpyoViewModel, demo: DemoPrefill = DemoPrefill()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(PhoneTab.HOME) }
     PhoneSurface {
         when (state.phase) {
             Phase.LOADING -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-            Phase.SIGN_UP -> SignUpScreen(state.busy, viewModel::signUp)
+            Phase.SIGN_UP -> SignUpScreen(state.busy, demo.nickname, viewModel::signUp)
             Phase.PAIR -> PairScreen(state.me?.nickname.orEmpty(), state.busy, viewModel::pair)
             Phase.READY -> Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (tab) {
-                        PhoneTab.HOME -> HomeScreen(state, viewModel::checkIn, viewModel::refresh)
+                        PhoneTab.HOME -> HomeScreen(state, viewModel::checkIn, viewModel::refresh, demo.note)
                         PhoneTab.HISTORY -> HistoryScreen(state.trips)
                         PhoneTab.FAMILY -> FamilyScreen(state.family, state.isOwner, state.busy, viewModel::regeneratePairingCode)
                         PhoneTab.CONDITION -> ConditionScreen(state.condition, state.busy, viewModel::saveCondition)
@@ -92,8 +94,8 @@ fun ShwimpyoApp(viewModel: ShwimpyoViewModel) {
 }
 
 @Composable
-fun SignUpScreen(busy: Boolean, onSignUp: (String) -> Unit) {
-    var nickname by rememberSaveable { mutableStateOf("") }
+fun SignUpScreen(busy: Boolean, initialNickname: String = "", onSignUp: (String) -> Unit) {
+    var nickname by rememberSaveable { mutableStateOf(initialNickname) }
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         PText("쉼표", 44.sp, weight = FontWeight.Bold)
         PText("함께 타는 사람의 몸과 마음을 챙기는 차", 16.sp, Modifier.padding(top = 6.dp), sub = true)
@@ -119,7 +121,7 @@ fun PairScreen(nickname: String, busy: Boolean, onPair: (String) -> Unit) {
 
 /** 홈: 우리 차 + 마지막 이동 요약 + 아직 안 남긴 도착 체크인. */
 @Composable
-fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, onRefresh: () -> Unit) {
+fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, onRefresh: () -> Unit, initialNote: String = "") {
     val vehicle = state.vehicle
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -142,7 +144,7 @@ fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, 
                 PText("마지막 이동 · ${last.startedAt.toDisplayTime()}", 13.sp, Modifier.padding(start = 4.dp, bottom = 8.dp), sub = true)
                 TripFacts(last)
             }
-            state.pendingCheckIn?.let { CheckInCard(it, state.busy, onCheckIn) }
+            state.pendingCheckIn?.let { CheckInCard(it, state.busy, onCheckIn, initialNote) }
         }
     }
 }
@@ -194,9 +196,9 @@ private fun RiskLine(peakRisk: Int) {
 /** 도착 체크인. 상담이 아니라 스스로 남기는 기분 하나 + 한 줄. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CheckInCard(trip: TripResponse, busy: Boolean, onCheckIn: (String, Mood, String) -> Unit) {
+private fun CheckInCard(trip: TripResponse, busy: Boolean, onCheckIn: (String, Mood, String) -> Unit, initialNote: String = "") {
     var mood by remember(trip.id) { mutableStateOf<Mood?>(null) }
-    var note by remember(trip.id) { mutableStateOf("") }
+    var note by remember(trip.id) { mutableStateOf(initialNote) }
     PCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
         PText("오늘 이동 어땠나요?", 18.sp, weight = FontWeight.SemiBold)
         PText("기분 하나만 골라도 돼요", 13.sp, Modifier.padding(top = 4.dp), sub = true)
@@ -330,7 +332,17 @@ private fun MessageBar(text: String, onDismiss: () -> Unit, modifier: Modifier) 
             .clickable(onClick = onDismiss)
             .padding(horizontal = 20.dp, vertical = 14.dp),
     ) { PText(text, 14.sp, color = p.onStrong, maxLines = 2) }
+    // 눌러서 닫지 않아도 잠시 뒤 사라진다(아래 버튼을 계속 가리지 않게)
+    LaunchedEffect(text) {
+        delay(MESSAGE_MS)
+        onDismiss()
+    }
 }
+
+private const val MESSAGE_MS = 3_000L
+
+/** 시연용 미리 채우기(디버그 빌드에서 실행 인자로만 들어온다). adb로는 한글을 입력할 수 없어서 둔다. */
+data class DemoPrefill(val nickname: String = "", val note: String = "")
 
 val Mood.label: String
     get() = when (this) {

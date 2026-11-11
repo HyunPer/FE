@@ -23,7 +23,16 @@ data class MotionSignals(
 
 enum class RiskLevel { LOW, CAUTION, HIGH }
 
-data class MotionRisk(val score: Int, val level: RiskLevel, val reasons: List<String>)
+/** 위험도를 올린 항목 하나. [points]는 민감도 배율을 곱하기 전 점수, [max]는 그 항목의 상한. */
+data class RiskFactor(val label: String, val points: Int, val max: Int)
+
+data class MotionRisk(
+    val score: Int,
+    val level: RiskLevel,
+    val reasons: List<String>,
+    /** [reasons]와 같은 순서. 화면에서 항목별 막대로 보여 준다. */
+    val factors: List<RiskFactor> = emptyList(),
+)
 
 /**
  * 멀미 위험도(0–100). 의학적 진단이 아니라 "미리 대비하자"는 신호다.
@@ -32,31 +41,31 @@ data class MotionRisk(val score: Int, val level: RiskLevel, val reasons: List<St
 object MotionRiskModel {
 
     fun evaluate(s: MotionSignals): MotionRisk {
-        val reasons = mutableListOf<String>()
+        val factors = mutableListOf<RiskFactor>()
         var raw = 0.0
 
         val turns = s.sharpTurnsAhead.coerceIn(0, 5)
         if (turns > 0) {
             raw += turns * 8.0 // 최대 40
-            reasons += "2km 안 급커브 ${s.sharpTurnsAhead}곳"
+            factors += RiskFactor("2km 안 급커브 ${s.sharpTurnsAhead}곳", turns * 8, 40)
         }
         val bumps = s.bumpsAhead.coerceIn(0, 5)
         if (bumps > 0) {
             raw += bumps * 4.0 // 최대 20
-            reasons += "턱·내리막 ${s.bumpsAhead}곳"
+            factors += RiskFactor("턱·내리막 ${s.bumpsAhead}곳", bumps * 4, 20)
         }
         val stopAndGo = ((s.brakesPerMinute - STOP_AND_GO_BASE) * 6.0).coerceIn(0.0, 20.0)
         if (stopAndGo > 0) {
             raw += stopAndGo
-            reasons += "가다 서다가 잦아요"
+            factors += RiskFactor("가다 서다가 잦아요", stopAndGo.toInt(), 20)
         }
         val swing = (s.steeringSwingDeg / SWING_FULL_DEG * 20.0).coerceIn(0.0, 20.0)
-        if (swing >= 8.0) reasons += "구불구불한 길이에요"
+        if (swing >= 8.0) factors += RiskFactor("구불구불한 길이에요", swing.toInt(), 20)
         raw += swing
         val long = ((s.drivingMinutes - LONG_TRIP_MIN) / 3.0).coerceIn(0.0, 10.0)
         if (long > 0) {
             raw += long
-            reasons += "${s.drivingMinutes}분째 이동 중"
+            factors += RiskFactor("${s.drivingMinutes}분째 이동 중", long.toInt(), 10)
         }
 
         val score = (raw * s.sensitivity.factor).toInt().coerceIn(0, 100)
@@ -65,7 +74,7 @@ object MotionRiskModel {
             score >= CAUTION_FROM -> RiskLevel.CAUTION
             else -> RiskLevel.LOW
         }
-        return MotionRisk(score, level, reasons)
+        return MotionRisk(score, level, factors.map { it.label }, factors)
     }
 
     private val MotionSensitivity.factor: Double
