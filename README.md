@@ -1,10 +1,8 @@
-# 쉼표 (가칭)
+# 쉼표
 
 **함께 타는 사람의 몸과 마음을 챙기는 차량 앱.** 차가 앞길의 급커브·과속방지턱·가다 서다를 미리 읽어 동승자의 멀미를 대비하게 하고, 도착하면 오늘 이동을 한 줄로 남기며 잠깐 쉬어 가게 합니다.
 
 현대차그룹 차량용 앱 개발 공모전(Pleos Playground SDK) 출품작 · 팀 **귤까먹는 헬창** (대표 정재윤)
-
-> 앱 이름은 확정 전입니다. 정해지면 `gradle.properties`의 `pleos.appName`과 두 앱의 `res/values/strings.xml`을 함께 바꿉니다.
 
 ## 무엇을 하나
 
@@ -93,7 +91,7 @@ PLEOS_E2E_BASE_URL=http://localhost:8090/ ./gradlew :core-api:test --tests '*End
 
 ## APK
 
-제출용 릴리스 APK는 이 저장소의 **`apk/` 폴더**에 `귤까먹는헬창_<앱이름>_release.apk`로 올립니다. 만드는 법과 서명은 [docs/RELEASE.md](docs/RELEASE.md)에 있습니다.
+제출용 릴리스 APK는 이 저장소의 **`apk/` 폴더**에 `귤까먹는헬창_쉼표_release.apk`로 올립니다. 만드는 법과 서명은 [docs/RELEASE.md](docs/RELEASE.md)에 있습니다.
 
 ```bash
 ./gradlew :vehicle-app:exportReleaseApk

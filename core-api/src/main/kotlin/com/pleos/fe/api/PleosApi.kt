@@ -42,8 +42,9 @@ object PleosApi {
 
     private fun retrofit(baseUrl: String, tokens: TokenStore, configure: OkHttpClient.Builder.() -> Unit): Retrofit {
         val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            // 무료 호스팅 서버는 쉬다가 첫 요청에 깨어나는 데 1분쯤 걸려서 넉넉히 기다린다.
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(75, TimeUnit.SECONDS)
             .addInterceptor(BearerInterceptor(tokens))
             .apply(configure)
             .build()

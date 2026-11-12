@@ -8,14 +8,14 @@
 ./gradlew :vehicle-app:exportReleaseApk
 ```
 
-→ `apk/귤까먹는헬창_<앱이름>_release.apk`. `.gitignore`는 `apk/*_release.apk`만 올라가게 되어 있습니다.
+→ `apk/귤까먹는헬창_쉼표_release.apk`. `.gitignore`는 `apk/*_release.apk`만 올라가게 되어 있습니다.
 
 빌드가 끝날 때 두 가지를 경고합니다. 둘 다 해결한 뒤 올립니다.
 
 | 경고 | 해결 |
 | --- | --- |
 | `keystore.properties가 없어 디버그 키로 서명` | 아래 "서명 키" |
-| `릴리스 서버 주소가 HTTP` | HTTPS 서버를 배포하고 `gradle.properties`의 `pleos.releaseApiBaseUrl` 채우기. 릴리스는 HTTP 접속이 막혀 있습니다(Pleos 보안 가이드 TLS 1.2+) |
+| `릴리스 서버 주소가 HTTP` | HTTPS 서버를 배포하고(BE 저장소 `docs/DEPLOY.md`) `gradle.properties`의 `pleos.releaseApiBaseUrl` 채우기. 릴리스는 HTTP 접속이 막혀 있습니다(Pleos 보안 가이드 TLS 1.2+) |
 
 ## 앱 이름이 정해지면
 
