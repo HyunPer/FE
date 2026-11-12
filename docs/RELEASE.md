@@ -49,5 +49,5 @@ keyPassword=...
 - [ ] 에뮬레이터에 릴리스 APK를 설치해 S1–S7(docs/EMULATOR_QA.md)이 HTTPS 서버로 동작한다
 - [ ] 파일 이름이 `귤까먹는헬창_<앱이름>_release.apk`
 - [ ] README.md에 앱 이름·한 줄 소개, 실행 방법, 테스트 환경·필요한 설정, APK 위치가 있다(공식 요건)
-- [ ] 접수: appdevchallenge@hyundai-partners.com, 제목 `[차량용 앱 개발 공모전] 귤까먹는 헬창_정재윤`, 팀원 전원 CC, 서명한 접수양식·동의서 첨부
+- [ ] 접수: appdevchallenge@hyundai-partners.com, 제목 `[차량용 앱 개발 공모전] 팀명_대표자명`, 팀원 전원 CC, 서명한 접수양식·동의서 첨부
 - [ ] 수정 제출은 제목 앞에 `[수정제출]`, 전체 자료와 동의서를 다시 첨부(마지막 제출본이 최종)
