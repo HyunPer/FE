@@ -62,6 +62,8 @@
 | 항목 | 값 |
 | --- | --- |
 | 차량 앱 실행 환경 | Pleos Connect Emulator(API 34) · 실차 Pleos Connect. minSdk 28, targetSdk 34 |
+| 개발에 사용한 에뮬레이터 | Pleos Connect Emulator **v2.1.0** (Android 14, API 34) |
+| 화면 규격 | 전체 화면 **2560×1440px, 160dpi(가로)**. 이 중 앱이 그려지는 영역은 약 1680×1210dp(실측)이며, 화면은 이 크기에 맞춰 확인했습니다. 가로 와이드(1280×640dp 기준)와 세로 배치도 지원합니다 |
 | 폰 앱 실행 환경 | Android 9(API 28) 이상 |
 | 빌드 | Android Studio, JDK 17 이상, Gradle 9.8.2(Wrapper 포함), AGP 9.4.1(내장 Kotlin 2.3.21) |
 | SDK 저장소 | `https://nexus-playground.pleos.ai/repository/maven-releases/` (settings.gradle.kts에 설정됨) |
