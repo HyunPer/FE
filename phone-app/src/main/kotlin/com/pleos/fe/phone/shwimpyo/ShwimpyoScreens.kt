@@ -2,6 +2,7 @@ package com.pleos.fe.phone.shwimpyo
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,9 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,10 +55,12 @@ import com.pleos.fe.api.model.VehicleDetailResponse
 import com.pleos.fe.api.model.VehicleRole
 import com.pleos.fe.phone.ui.Avatar
 import com.pleos.fe.phone.ui.BottomNav
+import com.pleos.fe.phone.ui.CircleAction
 import com.pleos.fe.phone.ui.FamilyColors
 import com.pleos.fe.phone.ui.LocalPalette
 import com.pleos.fe.phone.ui.PCard
 import com.pleos.fe.phone.ui.PChip
+import com.pleos.fe.phone.ui.PField
 import com.pleos.fe.phone.ui.PText
 import com.pleos.fe.phone.ui.PhoneSurface
 import com.pleos.fe.phone.ui.PhoneTab
@@ -73,7 +82,7 @@ fun ShwimpyoApp(viewModel: ShwimpyoViewModel, demo: DemoPrefill = DemoPrefill())
     var tab by rememberSaveable { mutableStateOf(PhoneTab.HOME) }
     PhoneSurface {
         when (state.phase) {
-            Phase.LOADING -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+            Phase.LOADING -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = LocalPalette.current.text)
             Phase.SIGN_UP -> SignUpScreen(state.busy, demo.nickname, viewModel::signUp)
             Phase.PAIR -> PairScreen(state.me?.nickname.orEmpty(), state.busy, viewModel::pair)
             Phase.READY -> Column(Modifier.fillMaxSize()) {
@@ -92,62 +101,107 @@ fun ShwimpyoApp(viewModel: ShwimpyoViewModel, demo: DemoPrefill = DemoPrefill())
     }
 }
 
+/** 화면을 이끄는 큰 글자. 아래로 갈수록 옅어져 바탕에 스민다. */
+@Composable
+private fun HeroText(text: String, size: TextUnit, modifier: Modifier = Modifier, fade: Float = 0.5f) {
+    val p = LocalPalette.current
+    Text(
+        text,
+        modifier,
+        fontSize = size,
+        lineHeight = size * 1.12f,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = (-0.03).em,
+        style = TextStyle(brush = Brush.verticalGradient(listOf(p.text, p.text.copy(alpha = fade)))),
+    )
+}
+
 @Composable
 fun SignUpScreen(busy: Boolean, initialNickname: String = "", onSignUp: (String) -> Unit) {
     var nickname by rememberSaveable { mutableStateOf(initialNickname) }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        PText("쉼표", 44.sp, weight = FontWeight.Bold)
-        PText("함께 타는 사람의 몸과 마음을 챙기는 차", 16.sp, Modifier.padding(top = 6.dp), sub = true)
-        PleosCar(Modifier.fillMaxWidth().padding(vertical = 28.dp))
-        OutlinedTextField(nickname, { nickname = it }, Modifier.fillMaxWidth(), label = { Text("가족이 부르는 이름 (예: 엄마)") }, singleLine = true)
-        Spacer(Modifier.height(16.dp))
-        PillButton("시작하기", Modifier.fillMaxWidth(), onClick = { if (nickname.isNotBlank() && !busy) onSignUp(nickname) })
+    val p = LocalPalette.current
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp)) {
+        Spacer(Modifier.weight(1f))
+        Box(Modifier.fillMaxWidth()) {
+            HeroText("쉼표,", 112.sp, Modifier.padding(start = 6.dp))
+            // 차가 큰 글자의 아랫부분에 살짝 걸친다
+            PleosCar(Modifier.fillMaxWidth().padding(top = 118.dp), p.isDark)
+        }
+        PText("함께 타는 사람의 몸과 마음을 챙기는 차", 17.sp, Modifier.padding(start = 6.dp, top = 12.dp), sub = true)
+        Spacer(Modifier.weight(1f))
+        PCard(Modifier.fillMaxWidth()) {
+            PField(nickname, { nickname = it }, "가족이 부르는 이름 (예: 엄마)", Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            PillButton("시작하기", Modifier.fillMaxWidth(), onClick = { if (nickname.isNotBlank() && !busy) onSignUp(nickname) })
+        }
     }
 }
 
 @Composable
 fun PairScreen(nickname: String, busy: Boolean, onPair: (String) -> Unit) {
     var code by rememberSaveable { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        PText("${nickname}님, 차와 연결해요", 28.sp, weight = FontWeight.SemiBold, maxLines = 2)
-        PText("차 화면에 뜬 6자리 연결 코드를 입력하세요", 15.sp, Modifier.padding(top = 8.dp), sub = true)
-        Spacer(Modifier.height(24.dp))
-        OutlinedTextField(code, { code = it.take(6) }, Modifier.fillMaxWidth(), label = { Text("연결 코드") }, singleLine = true)
-        Spacer(Modifier.height(16.dp))
-        PillButton("연결하기", Modifier.fillMaxWidth(), onClick = { if (code.length == 6 && !busy) onPair(code) })
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.Center) {
+        HeroText("${nickname}님,\n차와 연결해요", 46.sp, Modifier.padding(start = 6.dp), fade = 0.6f)
+        PText("차 화면에 뜬 6자리 연결 코드를 입력하세요", 16.sp, Modifier.padding(start = 6.dp, top = 12.dp), sub = true)
+        Spacer(Modifier.height(28.dp))
+        PCard(Modifier.fillMaxWidth()) {
+            PField(code, { code = it.take(6) }, "연결 코드", Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            PillButton("연결하기", Modifier.fillMaxWidth(), onClick = { if (code.length == 6 && !busy) onPair(code) })
+        }
     }
 }
 
-/** 홈: 우리 차 + 마지막 이동 요약 + 아직 안 남긴 도착 체크인. */
+/** 홈: 마지막 이동을 한마디로 알리는 큰 글자와 우리 차 + 이동 요약 + 아직 안 남긴 도착 체크인. */
 @Composable
 fun HomeScreen(state: ShwimpyoState, onCheckIn: (String, Mood, String) -> Unit, onRefresh: () -> Unit, initialNote: String = "") {
     val vehicle = state.vehicle
+    val last = state.trips.firstOrNull { it.endedAt != null }
     // 제목 줄은 고정하고 그 아래만 스크롤한다(스크롤해도 제목이 상태 표시줄에 반쯤 걸려 잘리지 않게)
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                PText(vehicle?.nickname ?: vehicle?.model ?: "우리 차", 22.sp, weight = FontWeight.SemiBold)
+                PText(vehicle?.nickname ?: vehicle?.model ?: "우리 차", 18.sp, weight = FontWeight.SemiBold)
                 PText("${state.me?.nickname.orEmpty()}님 · 쉼표", 13.sp, sub = true)
             }
-            PillButton("새로고침", filled = false, onClick = onRefresh)
+            CircleAction(Icons.Outlined.Refresh, "새로고침", onRefresh)
         }
-        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        PleosCar(Modifier.fillMaxWidth().padding(start = 28.dp, end = 28.dp, top = 4.dp, bottom = 12.dp))
-
-        val last = state.trips.firstOrNull { it.endedAt != null }
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            if (last == null) {
-                PCard(Modifier.fillMaxWidth()) {
-                    PText("아직 이동 기록이 없어요", 18.sp, weight = FontWeight.Medium)
-                    PText("차에 타면 쉼표가 길을 살피고, 도착하면 여기서 한 줄을 남길 수 있어요", 13.sp, Modifier.padding(top = 6.dp), sub = true, maxLines = 2)
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+            HomeHero(last?.peakRisk)
+            Column(Modifier.padding(horizontal = 20.dp)) {
+                if (last == null) {
+                    PCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        PText("아직 이동 기록이 없어요", 18.sp, weight = FontWeight.Medium)
+                        PText("차에 타면 쉼표가 길을 살피고, 도착하면 여기서 한 줄을 남길 수 있어요", 13.sp, Modifier.padding(top = 6.dp), sub = true, maxLines = 2)
+                    }
+                } else {
+                    Text(
+                        "마지막 이동 · ${last.startedAt.toDisplayTime()}",
+                        Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp),
+                        color = LocalPalette.current.subText,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                    TripFacts(last)
                 }
-            } else {
-                PText("마지막 이동 · ${last.startedAt.toDisplayTime()}", 13.sp, Modifier.padding(start = 4.dp, bottom = 8.dp), sub = true)
-                TripFacts(last)
+                state.pendingCheckIn?.let { CheckInCard(it, state.busy, onCheckIn, initialNote) }
             }
-            state.pendingCheckIn?.let { CheckInCard(it, state.busy, onCheckIn, initialNote) }
         }
-        }
+    }
+}
+
+/** 마지막 이동이 어땠는지 큰 글자 두 줄로 말하고, 차가 그 아래에 살짝 걸친다. 사실(최고 멀미 위험도)만으로 고른다. */
+@Composable
+private fun HomeHero(peakRisk: Int?) {
+    val words = when {
+        peakRisk == null -> "함께 탈\n준비 완료"
+        peakRisk >= 65 -> "많이\n흔들렸어요"
+        peakRisk >= 35 -> "조금\n흔들렸어요"
+        else -> "편안한\n이동이었어요"
+    }
+    Box(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        HeroText(words, 58.sp, Modifier.padding(horizontal = 24.dp))
+        PleosCar(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 125.dp), LocalPalette.current.isDark)
     }
 }
 
@@ -160,7 +214,7 @@ private fun TripFacts(trip: TripResponse) {
             Fact("막힘", "${trip.congestionMinutes}", "분", Modifier.weight(1f))
             Fact("급커브", "${trip.sharpTurns}", "곳", Modifier.weight(1f))
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         RiskLine(trip.peakRisk)
     }
 }
@@ -170,8 +224,8 @@ private fun Fact(label: String, value: String, unit: String, modifier: Modifier)
     Column(modifier) {
         PText(label, 13.sp, sub = true)
         Row(verticalAlignment = Alignment.Bottom) {
-            PText(value, 34.sp, weight = FontWeight.Light)
-            PText(unit, 14.sp, Modifier.padding(start = 2.dp, bottom = 6.dp), sub = true)
+            PText(value, 38.sp, weight = FontWeight.SemiBold)
+            PText(unit, 14.sp, Modifier.padding(start = 3.dp, bottom = 7.dp), sub = true)
         }
     }
 }
@@ -180,9 +234,9 @@ private fun Fact(label: String, value: String, unit: String, modifier: Modifier)
 private fun RiskLine(peakRisk: Int) {
     val p = LocalPalette.current
     val color = when {
-        peakRisk >= 65 -> Color(0xFFFF6B5E)
-        peakRisk >= 35 -> Color(0xFFFFB020)
-        else -> Color(0xFF22A06B)
+        peakRisk >= 65 -> if (p.isDark) Color(0xFFFF6B5E) else Color(0xFFA81F16)
+        peakRisk >= 35 -> if (p.isDark) Color(0xFFFFC145) else Color(0xFF945600)
+        else -> if (p.isDark) Color(0xFF3DDC97) else Color(0xFF0A7446)
     }
     Column {
         Row {
@@ -209,7 +263,7 @@ private fun CheckInCard(trip: TripResponse, busy: Boolean, onCheckIn: (String, M
             Mood.entries.forEach { m -> PChip(m.label, m == mood) { mood = m } }
         }
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(note, { note = it.take(200) }, Modifier.fillMaxWidth(), placeholder = { Text("한 줄 남기기 (선택)") }, singleLine = true)
+        PField(note, { note = it.take(200) }, "한 줄 남기기 (선택)", Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
         PillButton("남기기", Modifier.fillMaxWidth(), onClick = { mood?.let { if (!busy) onCheckIn(trip.id, it, note) } })
     }
@@ -221,7 +275,7 @@ fun HistoryScreen(trips: List<TripResponse>, now: Instant = Instant.now(), zone:
     val ended = trips.filter { it.endedAt != null }
     val week = remember(trips, now) { WeeklyInsights.of(trips, now, zone) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
-        PText("기록", 22.sp, weight = FontWeight.SemiBold)
+        PText("기록", 30.sp, Modifier.padding(start = 4.dp, top = 4.dp), weight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         PCard(Modifier.fillMaxWidth()) {
             PText("이번 주 ${week.tripCount}번 이동", 13.sp, sub = true)
@@ -261,8 +315,8 @@ fun FamilyScreen(family: VehicleDetailResponse?, isOwner: Boolean, busy: Boolean
     val context = LocalContext.current
     val p = LocalPalette.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
-        PText("가족", 22.sp, weight = FontWeight.SemiBold)
-        PText(family?.nickname ?: family?.model ?: "", 13.sp, Modifier.padding(top = 2.dp), sub = true)
+        PText("가족", 30.sp, Modifier.padding(start = 4.dp, top = 4.dp), weight = FontWeight.Bold)
+        PText(family?.nickname ?: family?.model ?: "", 14.sp, Modifier.padding(start = 4.dp, top = 2.dp), sub = true)
         if (family == null) {
             PText("가족 정보를 불러오지 못했어요", 15.sp, Modifier.padding(top = 16.dp), sub = true)
             return@Column
@@ -271,7 +325,7 @@ fun FamilyScreen(family: VehicleDetailResponse?, isOwner: Boolean, busy: Boolean
             PText("가족 초대 코드", 13.sp, sub = true)
             Row(Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 family.pairingCode.forEach { c ->
-                    Box(Modifier.size(42.dp, 52.dp).clip(RoundedCornerShape(12.dp)).background(p.background), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp, 56.dp).clip(RoundedCornerShape(14.dp)).background(p.well).border(1.dp, p.line, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                         PText(c.toString(), 26.sp, weight = FontWeight.SemiBold)
                     }
                 }
@@ -307,17 +361,21 @@ fun ConditionScreen(condition: RiderConditionDto, busy: Boolean, onSave: (RiderC
     var sensitivity by remember(condition) { mutableStateOf(condition.motionSensitivity) }
     var rest by remember(condition) { mutableStateOf(condition.restStyle) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
-        PText("내 컨디션", 22.sp, weight = FontWeight.SemiBold)
-        PText("함께 탄 가족 중 가장 멀미를 잘 타는 사람 기준으로 길을 살펴요", 13.sp, Modifier.padding(top = 6.dp), sub = true, maxLines = 2)
-        SectionTitle("멀미를 얼마나 타나요")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MotionSensitivity.entries.forEach { s -> PChip(s.label, s == sensitivity) { sensitivity = s } }
+        PText("내 컨디션", 30.sp, Modifier.padding(start = 4.dp, top = 4.dp), weight = FontWeight.Bold)
+        PText("함께 탄 가족 중 가장 멀미를 잘 타는 사람 기준으로 길을 살펴요", 14.sp, Modifier.padding(start = 4.dp, top = 6.dp), sub = true, maxLines = 2)
+        PCard(Modifier.fillMaxWidth().padding(top = 20.dp)) {
+            PText("멀미를 얼마나 타나요", 16.sp, Modifier.padding(bottom = 14.dp), weight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MotionSensitivity.entries.forEach { s -> PChip(s.label, s == sensitivity) { sensitivity = s } }
+            }
         }
-        SectionTitle("어떻게 쉬는 게 좋아요")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            RestStyle.entries.forEach { r -> PChip(r.label, r == rest) { rest = r } }
+        PCard(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            PText("어떻게 쉬는 게 좋아요", 16.sp, Modifier.padding(bottom = 14.dp), weight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RestStyle.entries.forEach { r -> PChip(r.label, r == rest) { rest = r } }
+            }
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
         PillButton("저장", Modifier.fillMaxWidth(), onClick = { if (!busy) onSave(RiderConditionDto(sensitivity, rest)) })
     }
 }

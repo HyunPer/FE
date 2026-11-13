@@ -25,14 +25,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.pleos.fe.api.model.VehicleSelfResponse
 import com.pleos.fe.ui.PleosCar
@@ -93,44 +96,69 @@ private const val MAX_SCALE = 1.6f
 
 /**
  * 대기 화면. 멤버가 없으면 연결 코드를 크게, 있으면 대기 상태와 작은 초대 코드. 정차 중 화면이다.
+ * 큰 글자 두 줄이 화면을 이끌고, 차는 화면 끝에 걸쳐 크게 놓는다.
  * 차량 이미지는 Pleos Connect 기본 화면과 같은 렌더(디자인 가이드 배포 자료)를 쓴다.
  */
 @Composable
 fun WaitingScreen(self: VehicleSelfResponse, onStartTrip: () -> Unit) {
     val paired = self.memberCount > 0
-    val dark = LocalVehicleColors.current.dark
+    val c = LocalVehicleColors.current
+    val glow = if (c.dark) 0.34f else 0.20f
     AdaptiveTall { portrait, tall ->
         when {
-            portrait -> Column(Modifier.fillMaxSize().padding(48.dp), verticalArrangement = Arrangement.Center) {
-                Brand()
-                Spacer(Modifier.height(32.dp))
-                WaitingText(self, onStartTrip)
-                Spacer(Modifier.height(40.dp))
-                PairingCode(self.pairingCode, large = !paired)
-                Spacer(Modifier.height(40.dp))
-                PleosCar(Modifier.fillMaxWidth(), dark)
+            portrait -> Column(Modifier.fillMaxSize().ambientGlow(c.accent, 0.5f, 0.86f, strength = glow).padding(48.dp)) {
+                TopBar(self)
+                Spacer(Modifier.height(56.dp))
+                Headline(paired, 84.sp)
+                Spacer(Modifier.height(20.dp))
+                SubLine(paired, 26.sp)
+                Spacer(Modifier.height(44.dp))
+                ActionPanel(self, onStartTrip, Modifier.fillMaxWidth())
+                Spacer(Modifier.weight(1f))
+                PleosCar(Modifier.fillMaxWidth(), c.dark)
             }
-            // 세로 여유가 큰 가로 화면: 글은 위, 차는 아래 오른쪽에 크게
-            tall -> Box(Modifier.fillMaxSize().padding(56.dp)) {
-                PleosCar(Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.62f), dark)
-                Column(Modifier.align(Alignment.TopStart)) {
-                    Brand()
-                    Spacer(Modifier.height(28.dp))
-                    WaitingText(self, onStartTrip)
-                    Spacer(Modifier.height(36.dp))
-                    PairingCode(self.pairingCode, large = !paired)
+            // 세로 여유가 큰 가로 화면(에뮬레이터 앱 영역). 연결 전에는 코드를 가운데에 두고 차를 아래에 놓는다
+            tall && !paired -> Column(
+                Modifier.fillMaxSize().ambientGlow(c.accent, 0.5f, 0.92f, strength = glow).padding(start = 56.dp, end = 56.dp, top = 56.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                TopBar(self)
+                Spacer(Modifier.height(44.dp))
+                Headline(paired, 76.sp, oneLine = true)
+                Spacer(Modifier.height(14.dp))
+                SubLine(paired, 26.sp)
+                Spacer(Modifier.height(36.dp))
+                ActionPanel(self, onStartTrip)
+                Spacer(Modifier.weight(1f))
+                PleosCar(Modifier.width(520.dp), c.dark)
+            }
+            // 연결 뒤에는 큰 글자를 왼쪽 위에, 차를 오른쪽 아래에 크게
+            tall -> Box(Modifier.fillMaxSize().ambientGlow(c.accent, 0.70f, 0.74f, strength = glow)) {
+                PleosCar(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 44.dp).fillMaxWidth(0.62f), c.dark)
+                Column(Modifier.fillMaxSize().padding(56.dp)) {
+                    TopBar(self)
+                    Spacer(Modifier.height(44.dp))
+                    Headline(paired, 112.sp)
+                    Spacer(Modifier.height(20.dp))
+                    SubLine(paired, 26.sp)
+                    Spacer(Modifier.weight(1f))
+                    ActionPanel(self, onStartTrip, Modifier.width(352.dp))
                 }
             }
-            else -> Row(Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+            else -> Row(
+                Modifier.fillMaxSize().ambientGlow(c.accent, 0.78f, 0.7f, strength = glow).padding(start = 56.dp, top = 36.dp, bottom = 36.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.weight(1f)) {
                     Brand()
-                    Spacer(Modifier.height(20.dp))
-                    WaitingText(self, onStartTrip)
-                    Spacer(Modifier.height(24.dp))
-                    PairingCode(self.pairingCode, large = !paired)
+                    Spacer(Modifier.height(18.dp))
+                    Headline(paired, 52.sp, oneLine = true)
+                    Spacer(Modifier.height(8.dp))
+                    SubLine(paired, 22.sp)
+                    Spacer(Modifier.height(22.dp))
+                    ActionPanel(self, onStartTrip, wide = true)
                 }
-                Spacer(Modifier.width(32.dp))
-                PleosCar(Modifier.width(520.dp), dark)
+                PleosCar(Modifier.width(540.dp).padding(end = 12.dp), c.dark)
             }
         }
     }
@@ -151,13 +179,24 @@ fun AdaptiveTall(content: @Composable (portrait: Boolean, tall: Boolean) -> Unit
     }
 }
 
+/** 맨 위 줄: 왼쪽에 앱 표식, 오른쪽에 연결 상태. */
+@Composable
+private fun TopBar(self: VehicleSelfResponse) {
+    val c = LocalVehicleColors.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Brand()
+        Spacer(Modifier.weight(1f))
+        if (self.memberCount > 0) StatusChip("가족 ${self.memberCount}명 연결됨", c.riskLow) else StatusChip("연결 기다리는 중", c.accent)
+    }
+}
+
 /** 앱 이름과 쉼표 모양 표식. */
 @Composable
 private fun Brand() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        ShwimpyoMark(40.dp)
-        Spacer(Modifier.width(12.dp))
-        Text("쉼표", color = TextColor, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+        ShwimpyoMark(44.dp)
+        Spacer(Modifier.width(14.dp))
+        Text("쉼표", color = TextColor, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -183,26 +222,54 @@ internal fun ShwimpyoMark(size: Dp) {
     }
 }
 
+/** 화면을 이끄는 큰 글자. 아래로 갈수록 조금 옅어져 바탕에 스민다. */
 @Composable
-private fun WaitingText(self: VehicleSelfResponse, onStartTrip: () -> Unit) {
+private fun Headline(paired: Boolean, size: TextUnit, oneLine: Boolean = false) {
+    val c = LocalVehicleColors.current
+    val text = when {
+        paired && oneLine -> "함께 탈 준비가 됐어요"
+        paired -> "함께 탈\n준비가 됐어요"
+        oneLine -> "이 차를 가족과 연결하세요"
+        else -> "이 차를 가족과\n연결하세요"
+    }
+    Text(
+        text,
+        fontSize = size,
+        lineHeight = size * 1.14f,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.02).em,
+        style = TextStyle(brush = Brush.verticalGradient(listOf(c.text, c.text.copy(alpha = if (oneLine) 0.86f else 0.66f)))),
+    )
+}
+
+@Composable
+private fun SubLine(paired: Boolean, size: TextUnit) {
+    Text(
+        if (paired) "운전석에 앉고 P단이면 자동으로 시작해요" else "쉼표 폰 앱에서 이 코드를 입력하세요",
+        color = SubText,
+        fontSize = size,
+    )
+}
+
+/**
+ * 유리 카드 하나에 할 일을 모은다. 연결 전에는 큰 연결 코드, 연결 뒤에는 출발 버튼과 작은 초대 코드.
+ * 탑승은 착석+P단으로 자동 감지한다. 버튼은 에뮬레이터 시연과 수동 시작용이다.
+ */
+@Composable
+private fun ActionPanel(self: VehicleSelfResponse, onStartTrip: () -> Unit, modifier: Modifier = Modifier, wide: Boolean = false) {
     val paired = self.memberCount > 0
-    Column {
-        Text(
-            if (paired) "함께 탈 준비가 됐어요" else "이 차를 가족과 연결하세요",
-            color = TextColor,
-            fontSize = 44.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(14.dp))
-        Text(
-            if (paired) "가족 ${self.memberCount}명 연결됨 · 운전석에 앉고 P단이면 자동으로 시작해요" else "쉼표 폰 앱에서 이 코드를 입력하세요",
-            color = SubText,
-            fontSize = 24.sp,
-        )
-        if (paired) {
-            // 탑승은 착석+P단으로 자동 감지한다. 에뮬레이터 시연용으로 버튼도 둔다.
-            Spacer(Modifier.height(32.dp))
-            PrimaryButton("지금 출발", { onStartTrip() })
+    when {
+        !paired -> Column(modifier.glass().padding(horizontal = 28.dp, vertical = 24.dp)) { PairingCode(self.pairingCode, large = !wide) }
+        // 낮은 와이드 화면: 버튼과 코드를 한 줄에
+        wide -> Row(verticalAlignment = Alignment.CenterVertically) {
+            PrimaryButton("지금 출발", onStartTrip)
+            Spacer(Modifier.width(24.dp))
+            Column(Modifier.glass(TileShape).padding(horizontal = 20.dp, vertical = 12.dp)) { PairingCode(self.pairingCode, large = false) }
+        }
+        else -> Column(modifier.glass().padding(24.dp)) {
+            PairingCode(self.pairingCode, large = false)
+            Spacer(Modifier.height(22.dp))
+            PrimaryButton("지금 출발", onStartTrip, Modifier.fillMaxWidth())
         }
     }
 }
@@ -210,19 +277,21 @@ private fun WaitingText(self: VehicleSelfResponse, onStartTrip: () -> Unit) {
 /** 연결 코드 6자리. 멤버가 없을 때(정차 중 연결 화면)는 크게. */
 @Composable
 private fun PairingCode(code: String, large: Boolean) {
+    val c = LocalVehicleColors.current
+    val cell = RoundedCornerShape(if (large) 18.dp else 12.dp)
     Column {
         Text(if (large) "연결 코드" else "가족 초대 코드", color = SubText, fontSize = if (large) 20.sp else 16.sp)
-        Spacer(Modifier.height(if (large) 12.dp else 8.dp))
+        Spacer(Modifier.height(if (large) 14.dp else 10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(if (large) 12.dp else 8.dp)) {
-            code.forEach { c ->
+            code.forEach { ch ->
                 Box(
                     Modifier
-                        .size(if (large) 84.dp else 48.dp, if (large) 108.dp else 60.dp)
-                        .background(Surface, RoundedCornerShape(8.dp))
-                        .border(1.dp, Line, RoundedCornerShape(8.dp)),
+                        .size(if (large) 84.dp else 44.dp, if (large) 108.dp else 58.dp)
+                        .background(c.track, cell)
+                        .border(1.dp, c.line, cell),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(c.toString(), color = TextColor, fontSize = if (large) 52.sp else 28.sp, fontWeight = FontWeight.Bold)
+                    Text(ch.toString(), color = TextColor, fontSize = if (large) 54.sp else 28.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
